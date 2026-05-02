@@ -17,9 +17,12 @@ public sealed class DecoratorTests
     public async Task HydeRetriever_searches_with_LLM_generated_passage()
     {
         var captured = "";
-        var inner = new RecordingRetriever(q => { captured = q; return new[] {
+        var inner = new RecordingRetriever(q =>
+        {
+            captured = q; return new[] {
             new RetrievalResult(Chunk("a", "alpha"), 0.9)
-        };});
+        };
+        });
         var chat = new StubChatClient(_ => "Vacation policy hypothetical: 20 days per year accrued monthly.");
         var hyde = new HydeRetriever(inner, chat);
 
@@ -32,7 +35,8 @@ public sealed class DecoratorTests
     public async Task RagFusionRetriever_runs_inner_per_variant_and_merges()
     {
         var calls = new List<string>();
-        var inner = new RecordingRetriever(q => {
+        var inner = new RecordingRetriever(q =>
+        {
             calls.Add(q);
             return new[] { new RetrievalResult(Chunk(q, q), 0.5) };
         });
