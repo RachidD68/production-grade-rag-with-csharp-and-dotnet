@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
     <ProjectReference Include="..\..\samples\Ch01_HelloWorldRag\Ch01_HelloWorldRag.csproj" />
     <ProjectReference Include="..\..\samples\Ch02_SkToMafMigration\Ch02_SkToMafMigration.csproj" />
     <ProjectReference Include="..\..\tools\generate-dataset\GenerateDataset.csproj" />
