@@ -1,0 +1,29 @@
+name: ci-eval
+
+# Quality gate that blocks PRs whose RAG faithfulness drops below 0.85.
+# Wired up in Phase 6 (Ch 20). For now, manual-trigger only so the workflow
+# definition lives in main without firing on every PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason to trigger the eval gate manually"
+        required: false
+        default: "manual smoke check"
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    name: eval gate (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notice
+        run: |
+          echo "::notice::ci-eval is a Phase 0 placeholder."
+          echo "Real implementation lands in Phase 6 (Ch 20):"
+          echo "  - run tools/eval-runner against the golden eval set"
+          echo "  - assert faithfulness >= 0.85"
+          echo "  - emit JUnit XML for the GitHub Actions test summary"
