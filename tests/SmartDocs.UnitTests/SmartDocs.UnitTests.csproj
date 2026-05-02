@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\SmartDocs.Routing\SmartDocs.Routing.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Mcp\SmartDocs.Mcp.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Agents\SmartDocs.Agents.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Evaluation\SmartDocs.Evaluation.csproj" />
     <ProjectReference Include="..\..\samples\Ch01_HelloWorldRag\Ch01_HelloWorldRag.csproj" />
     <ProjectReference Include="..\..\samples\Ch02_SkToMafMigration\Ch02_SkToMafMigration.csproj" />
     <ProjectReference Include="..\..\tools\generate-dataset\GenerateDataset.csproj" />
