@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/Ch01_HelloWorldRag/Ch01_HelloWorldRag.csproj" />
+    <Project Path="samples/Ch02_SkToMafMigration/Ch02_SkToMafMigration.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/SmartDocs.Agents/SmartDocs.Agents.csproj" />
