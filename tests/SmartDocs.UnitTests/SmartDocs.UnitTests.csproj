@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\samples\Ch01_HelloWorldRag\Ch01_HelloWorldRag.csproj" />
     <ProjectReference Include="..\..\tools\generate-dataset\GenerateDataset.csproj" />
   </ItemGroup>
 

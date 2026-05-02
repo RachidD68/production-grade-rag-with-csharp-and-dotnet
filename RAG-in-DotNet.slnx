@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Ch01_HelloWorldRag/Ch01_HelloWorldRag.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/SmartDocs.Agents/SmartDocs.Agents.csproj" />
     <Project Path="src/SmartDocs.Api/SmartDocs.Api.csproj" />
