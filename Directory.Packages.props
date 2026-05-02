@@ -63,6 +63,14 @@
 
   <ItemGroup Label="Tokenizers, embeddings, local LLMs">
     <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+    <!-- Tiktoken encoding-data packages — required at runtime by
+         TiktokenTokenizer.CreateForEncoding(). Shipped separately so apps
+         only pay disk space for the encodings they actually use. -->
+    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
+    <!-- Pin the patched Microsoft.Bcl.Memory transitive: M.ML.Tokenizers 2.0.0
+         pulls 9.0.4 which has GHSA-73j8-2gch-69rq (high severity). -->
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.7" />
     <PackageVersion Include="OllamaSharp" Version="5.4.25" />
   </ItemGroup>
 
