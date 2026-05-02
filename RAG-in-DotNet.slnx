@@ -1,2 +1,24 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartDocs.Agents/SmartDocs.Agents.csproj" />
+    <Project Path="src/SmartDocs.Api/SmartDocs.Api.csproj" />
+    <Project Path="src/SmartDocs.Core/SmartDocs.Core.csproj" />
+    <Project Path="src/SmartDocs.Dashboard/SmartDocs.Dashboard.csproj" />
+    <Project Path="src/SmartDocs.Evaluation/SmartDocs.Evaluation.csproj" />
+    <Project Path="src/SmartDocs.Generation/SmartDocs.Generation.csproj" />
+    <Project Path="src/SmartDocs.Ingestion/SmartDocs.Ingestion.csproj" />
+    <Project Path="src/SmartDocs.Mcp/SmartDocs.Mcp.csproj" />
+    <Project Path="src/SmartDocs.Operations/SmartDocs.Operations.csproj" />
+    <Project Path="src/SmartDocs.Performance/SmartDocs.Performance.csproj" />
+    <Project Path="src/SmartDocs.Reranking/SmartDocs.Reranking.csproj" />
+    <Project Path="src/SmartDocs.Retrieval/SmartDocs.Retrieval.csproj" />
+    <Project Path="src/SmartDocs.Routing/SmartDocs.Routing.csproj" />
+    <Project Path="src/SmartDocs.Security/SmartDocs.Security.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartDocs.EvalTests/SmartDocs.EvalTests.csproj" />
+    <Project Path="tests/SmartDocs.IntegrationTests/SmartDocs.IntegrationTests.csproj" />
+    <Project Path="tests/SmartDocs.SecurityTests/SmartDocs.SecurityTests.csproj" />
+    <Project Path="tests/SmartDocs.UnitTests/SmartDocs.UnitTests.csproj" />
+  </Folder>
 </Solution>

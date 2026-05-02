@@ -90,6 +90,10 @@
     <PackageVersion Include="System.CommandLine" Version="2.0.7" />
   </ItemGroup>
 
+  <ItemGroup Label="ASP.NET Core 10 — first-class OpenAPI 3.1 (no Swashbuckle needed)">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
