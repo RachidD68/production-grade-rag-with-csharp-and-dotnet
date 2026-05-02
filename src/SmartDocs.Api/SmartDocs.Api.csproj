@@ -7,4 +7,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SmartDocs.Core\SmartDocs.Core.csproj" />
+  </ItemGroup>
+
 </Project>
