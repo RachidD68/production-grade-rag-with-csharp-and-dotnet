@@ -137,7 +137,7 @@ The companion code is built in 9 incremental phases. Phase 0 is done; later phas
 |---|---|---|---|
 | 0 | — | Repo bootstrap | ✅ |
 | 1 | Ch 1–2 | Foundations, Hello-World RAG, SK→MAF migration | ✅ |
-| 2 | Ch 3–10 | Core pipeline: embeddings → chunking → multimodal → vector DBs → indexing → retrieval → re-ranking → SSE | ⏳ |
+| 2 | Ch 3–10 | Core pipeline: embeddings → chunking → multimodal → vector DBs → indexing → retrieval → re-ranking → SSE | ✅ |
 | 3 | Ch 11–12 | Query intelligence: metadata filters, query construction, routing, AgentSession | ⏳ |
 | 4 | Ch 13–14 | Graph + hybrid storage (Neo4j, fusion service) | ⏳ |
 | 5 | Ch 15–19 | Design patterns: HyDE/RAG-Fusion/CRAG, Vectorless, LazyGraphRAG, MCP, Multi-Agent | ⏳ |
