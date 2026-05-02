@@ -3,6 +3,7 @@
     <Project Path="samples/Ch01_HelloWorldRag/Ch01_HelloWorldRag.csproj" />
     <Project Path="samples/Ch02_SkToMafMigration/Ch02_SkToMafMigration.csproj" />
     <Project Path="samples/Ch03_EmbeddingBenchmarks/Ch03_EmbeddingBenchmarks.csproj" />
+    <Project Path="samples/Ch04_ChunkingPlayground/Ch04_ChunkingPlayground.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/SmartDocs.Agents/SmartDocs.Agents.csproj" />

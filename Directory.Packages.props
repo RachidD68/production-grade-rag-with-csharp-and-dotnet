@@ -63,6 +63,10 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.7" />
   </ItemGroup>
 
+  <ItemGroup Label="Roslyn (used by CodeFileChunker in Ch 4)">
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Tokenizers, embeddings, local LLMs">
     <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
     <!-- Tiktoken encoding-data packages — required at runtime by
