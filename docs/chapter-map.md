@@ -1,11 +1,11 @@
 # Chapter Map
 
-Maps each of the 25 chapters in the syllabus to the projects, files, tests, and samples that exercise it. Updated at the end of every phase. **Last updated: end of Phase 0.**
+Maps each of the 25 chapters in the syllabus to the projects, files, tests, and samples that exercise it. Updated at the end of every phase. **Last updated: end of Phase 1.**
 
 | # | Part | Chapter | Phase | Primary code | Tests | Samples |
 |---|---|---|---|---|---|---|
-| 1 | I | The AI Landscape | 1 | `samples/Ch01_HelloWorldRag/` | unit + smoke | Ch01_HelloWorldRag |
-| 2 | I | The .NET Toolkit for RAG Development | 1 | `SmartDocs.Core` (interfaces, `TokenCounter`, `LlmClientOptions`); `SmartDocs.Api` skeleton | `TokenCounter` ≤2% error | Ch02_SkToMafMigration |
+| 1 | I | The AI Landscape | **1 ✅** | [`samples/Ch01_HelloWorldRag/Program.cs`](../samples/Ch01_HelloWorldRag/Program.cs), [`HelloWorldRag.cs`](../samples/Ch01_HelloWorldRag/HelloWorldRag.cs) | [`HelloWorldRagTests`](../tests/SmartDocs.UnitTests/Samples/HelloWorldRagTests.cs) — vacation question retrieves correct chunk; cosine-math edge cases | Ch01_HelloWorldRag |
+| 2 | I | The .NET Toolkit for RAG Development | **1 ✅** | [`SmartDocs.Core/Documents/`](../src/SmartDocs.Core/Documents) (5 records), [`/Abstractions/`](../src/SmartDocs.Core/Abstractions) (5 interfaces), [`/Tokens/TokenCounter.cs`](../src/SmartDocs.Core/Tokens/TokenCounter.cs), [`/Configuration/LlmClientOptions.cs`](../src/SmartDocs.Core/Configuration/LlmClientOptions.cs), [`/DependencyInjection/ServiceCollectionExtensions.cs`](../src/SmartDocs.Core/DependencyInjection/ServiceCollectionExtensions.cs); [`SmartDocs.Api/Program.cs`](../src/SmartDocs.Api/Program.cs) `/health` | [`DomainModelTests`](../tests/SmartDocs.UnitTests/Documents/DomainModelTests.cs), [`TokenCounterTests`](../tests/SmartDocs.UnitTests/Tokens/TokenCounterTests.cs) (10 tiktoken fixtures, ≤2% delta), [`LlmClientOptionsTests`](../tests/SmartDocs.UnitTests/Configuration/LlmClientOptionsTests.cs), [`HealthEndpointTests`](../tests/SmartDocs.IntegrationTests/Api/HealthEndpointTests.cs) (WebApplicationFactory) | Ch02_SkToMafMigration |
 | 3 | II | Embeddings — Turning Text into Vectors | 2 | `SmartDocs.Ingestion/Embeddings/` (`EmbeddingService`, `BatchEmbeddingPipeline`) | embedding rate-limit / 429 handling | Ch03_EmbeddingBenchmarks |
 | 4 | II | Chunking and Contextual Retrieval | 2 | `SmartDocs.Ingestion/Chunking/` (`FixedSizeChunker`, `SentenceChunker`, `RecursiveCharacterChunker`, `SemanticChunker`, `CodeFileChunker`, `ContextualChunker`) | named-entity-not-split assertion | Ch04_ChunkingPlayground, Ch04_ContextualRetrievalDemo |
 | 5 | II | Multimodal Content | 2 | `SmartDocs.Ingestion/Multimodal/` (`PdfImageExtractor`, `ImageCaptioner`, `MultimodalChunker`) | retrieval cites Q3 chart | — |
@@ -36,4 +36,14 @@ Maps each of the 25 chapters in the syllabus to the projects, files, tests, and 
 - The `tools/generate-dataset` console produces the 300-document Contoso corpus (with the 6th silo Release Notes & Tickets) deterministically from a fixed seed.
 - One xUnit test asserts dataset determinism.
 
-Nothing in this table beyond Phase 0 has been written yet.
+## Phase 1 status
+
+- `SmartDocs.Core` is populated with 5 domain records (`Document`, `DocumentChunk`, `EmbeddedChunk`, `RetrievalResult`, `DocumentMetadata`) and 5 abstractions (`IDocumentLoader`, `IChunker`, `IEmbeddingService`, `IVectorStore`, `IRetriever`). Other src/ projects retain their `Placeholder.cs`.
+- `TokenCounter` ships with `cl100k_base` default and a span-based overload, verified across 10 tiktoken fixtures.
+- `LlmClientOptions` + `services.AddSmartDocsCore(configuration)` registers `IChatClient`, `IEmbeddingGenerator<string, Embedding<float>>`, and `ITokenCounter`. Provider toggle: Ollama (default) or AzureOpenAI.
+- `SmartDocs.Api` exposes `GET /health` reporting the active provider and concrete client types — proven via `WebApplicationFactory<Program>` smoke test.
+- `samples/Ch01_HelloWorldRag` is a runnable 80-LOC program that retrieves the right chunk and answers via the chat client; tested end-to-end with stub `IChatClient` / `IEmbeddingGenerator`.
+- `samples/Ch02_SkToMafMigration` ships the MAF "after" of one canonical SK pattern (Kernel + KernelFunction + ChatHistory + tool call → ChatClientAgent + AIFunction + AgentSession). The SK "before" lives as a documentation comment block — no SK packages required.
+- 38 tests passing (37 unit + 1 integration).
+
+Phases 2–8 remain as listed in the table above.

@@ -1,6 +1,6 @@
 # Architecture
 
-> Updated at the end of every phase. **Last updated: end of Phase 0.**
+> Updated at the end of every phase. **Last updated: end of Phase 1.**
 
 This document is the canonical view of the SmartDocs architecture as it stands *today*. As chapters add capabilities, the diagrams below grow.
 
@@ -84,6 +84,42 @@ flowchart TB
     Operations -.drift / GDPR.-> Qdrant
 ```
 
+## Phase 1 — Foundations Land
+
+By the end of Phase 1, the foundation is in place: `SmartDocs.Core` ships
+domain models and interfaces, `TokenCounter`, `LlmClientOptions`, and
+`AddSmartDocsCore()`. `SmartDocs.Api` exposes `/health`. Two samples
+(`Ch01_HelloWorldRag`, `Ch02_SkToMafMigration`) prove the wiring end-to-end.
+
+```mermaid
+flowchart LR
+    Config["appsettings.json<br/>(SmartDocs:Llm.Provider)"] --> AddCore
+
+    subgraph Core["SmartDocs.Core"]
+      Domain["Documents/<br/>Document, DocumentChunk,<br/>EmbeddedChunk, RetrievalResult,<br/>DocumentMetadata"]
+      Abstractions["Abstractions/<br/>IDocumentLoader, IChunker,<br/>IEmbeddingService, IVectorStore,<br/>IRetriever"]
+      Tokens["Tokens/<br/>ITokenCounter, TokenCounter<br/>(cl100k_base default)"]
+      Options["Configuration/<br/>LlmClientOptions<br/>(Ollama | AzureOpenAI)"]
+      AddCore["DependencyInjection/<br/>AddSmartDocsCore()"]
+    end
+
+    AddCore -->|registers| ChatClient["IChatClient"]
+    AddCore -->|registers| EmbedGen["IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt;"]
+    AddCore -->|registers| TokenCounter
+
+    ChatClient -.Ollama.-> Ollama["OllamaApiClient<br/>http://localhost:11434"]
+    ChatClient -.AzureOpenAI.-> AOAI["AzureOpenAIClient<br/>+ AsIChatClient()"]
+    EmbedGen -.Ollama.-> Ollama
+    EmbedGen -.AzureOpenAI.-> AOAIEmb["AzureOpenAIClient<br/>+ AsIEmbeddingGenerator()"]
+
+    Api["SmartDocs.Api<br/>GET /health"] -->|uses| AddCore
+    Ch01["samples/Ch01_HelloWorldRag<br/>brute-force cosine + grounded answer"] -->|uses| AddCore
+    Ch02["samples/Ch02_SkToMafMigration<br/>ChatClientAgent + AIFunction"] -->|uses| AddCore
+```
+
+The other 13 src/ projects still contain only `Placeholder.cs`.
+
 Update history:
 
 - **2026-05-02 (end of Phase 0)** — first cut. Projects exist but contain only placeholders.
+- **2026-05-02 (end of Phase 1)** — `SmartDocs.Core` populated; `SmartDocs.Api/health` live; Ch01 + Ch02 samples runnable; 38 tests green.

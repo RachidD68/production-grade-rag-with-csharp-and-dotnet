@@ -2,7 +2,7 @@
 
 Companion code for **_RAG in .NET: Building Production Retrieval-Augmented Generation with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
 
-> **Status — Phase 0 ✅ complete.** Repo bootstrap, package pins, infra stack, CI skeleton, and the deterministic 300-document Contoso dataset generator are in place. Chapter code lands in subsequent phases (see [Build Plan](#build-plan)).
+> **Status — Phase 1 ✅ complete.** Repo bootstrap and Foundations (Ch 1–2) shipped: `SmartDocs.Core` foundational interfaces and domain models, `TokenCounter`, `LlmClientOptions` + `AddSmartDocsCore()`, the Ch 1 Hello-World RAG sample, and the Ch 2 SK→MAF migration sample. 38 tests passing. See [Build Plan](#build-plan) for what comes next.
 
 ---
 
@@ -69,8 +69,10 @@ dotnet run --project tools/generate-dataset -- --small --output data
 # 5. Run all tests
 dotnet test
 
-# 6. (Phase 1+) Run the chapter samples
-# dotnet run --project samples/Ch01_HelloWorldRag      # appears in Phase 1
+# 6. Run the chapter samples (require Ollama from step 3)
+dotnet run --project samples/Ch01_HelloWorldRag      # Ch 1: 80-line Hello-World RAG
+dotnet run --project samples/Ch02_SkToMafMigration   # Ch 2: SK→MAF migration walk-through
+dotnet run --project src/SmartDocs.Api               # /health: shows the active provider + models
 ```
 
 ---
@@ -133,8 +135,8 @@ The companion code is built in 9 incremental phases. Phase 0 is done; later phas
 
 | Phase | Chapters | Scope | Status |
 |---|---|---|---|
-| 0 | — | Repo bootstrap (you are here) | ✅ |
-| 1 | Ch 1–2 | Foundations, Hello-World RAG, SK→MAF migration | ⏳ |
+| 0 | — | Repo bootstrap | ✅ |
+| 1 | Ch 1–2 | Foundations, Hello-World RAG, SK→MAF migration | ✅ |
 | 2 | Ch 3–10 | Core pipeline: embeddings → chunking → multimodal → vector DBs → indexing → retrieval → re-ranking → SSE | ⏳ |
 | 3 | Ch 11–12 | Query intelligence: metadata filters, query construction, routing, AgentSession | ⏳ |
 | 4 | Ch 13–14 | Graph + hybrid storage (Neo4j, fusion service) | ⏳ |
