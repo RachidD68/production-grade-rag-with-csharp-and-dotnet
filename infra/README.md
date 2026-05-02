@@ -7,7 +7,7 @@ Docker Compose stack for running every service the book needs **on a laptop**, w
 | Service | Image | Ports | Used in |
 |---|---|---|---|
 | Qdrant | `qdrant/qdrant:latest` | 6333 (REST), 6334 (gRPC) | Ch 6, 8, 14, 17, 24 |
-| Neo4j 5.28 Community | `neo4j:5.28-community` | 7474 (HTTP), 7687 (Bolt) | Ch 13, 14, 17, 24 |
+| Neo4j 5.26 Community | `neo4j:5.26-community` | 7474 (HTTP), 7687 (Bolt) | Ch 13, 14, 17, 24 |
 | Redis 7 | `redis:7-alpine` | 6379 | Ch 21, 24 |
 | Ollama | `ollama/ollama:latest` | 11434 | Ch 1, 3, 9, 21 (local fallback for Azure OpenAI) |
 | Aspire Dashboard | `mcr.microsoft.com/dotnet/aspire-dashboard:latest` | 18888 (UI), 18889 / 4317 (OTLP) | Ch 21 |

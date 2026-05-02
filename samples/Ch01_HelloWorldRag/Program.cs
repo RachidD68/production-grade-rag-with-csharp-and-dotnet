@@ -20,7 +20,13 @@ using Microsoft.Extensions.Hosting;
 using RagInDotNet.Samples.Ch01_HelloWorldRag;
 using SmartDocs.Core.DependencyInjection;
 
-var builder = Host.CreateApplicationBuilder(args);
+// Pin ContentRoot to the binary directory so `dotnet run --project ...`
+// finds appsettings.json regardless of the caller's CWD.
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory,
+});
 builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 builder.Services.AddSmartDocsCore(builder.Configuration);
 using var host = builder.Build();

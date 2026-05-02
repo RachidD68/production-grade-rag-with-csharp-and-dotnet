@@ -36,7 +36,7 @@ services:
       start_period: 10s
 
   neo4j:
-    image: neo4j:5.28-community
+    image: neo4j:5.26-community
     container_name: rag-neo4j
     restart: unless-stopped
     ports:

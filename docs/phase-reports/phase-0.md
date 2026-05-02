@@ -71,7 +71,22 @@ $ grep -rn -E "ChatAgent[^A-Za-z]|IVectorStore[^a-zA-Z]|IVectorStoreRecordCollec
 5. **`dotnet new sln` produces `.slnx`** (XML) on .NET 10 SDK by default, not `.sln`. ADR-0006 documents this.
 6. **`blazorserver` template was removed** in .NET 10 in favor of unified `blazor` with `--interactivity Server`. ADR-0006 documents this.
 7. **`<TreatWarningsAsErrors>true>` plus `<EnforceCodeStyleInBuild>true>` plus naming rules** trips IDE1006 on private static readonly fields without a `_` prefix. The fix in `.editorconfig` is to define a more specific rule that maps `private static readonly` to PascalCase before the generic `private readonly` → `_camelCase` rule.
-8. **Docker is not installed on the build machine.** `infra/docker-compose.yml` ships **unverified on real Docker** — only the YAML is parsed. First reader to run `docker compose up -d` should report any breakage.
+8. **Docker was not installed on the build machine when Phase 0 first landed.** `infra/docker-compose.yml` shipped initially unverified on real Docker — only the YAML was parsed. **Verified end-to-end on 2026-05-02 after Docker Desktop install** (see *Phase 0 / 1 Docker verification* below).
+
+## Phase 0 / 1 Docker verification (2026-05-02, post-Docker-install)
+
+After Docker Desktop became available, the full stack was brought up and verified:
+
+- **Image fix**: `neo4j:5.28-community` did not exist on Docker Hub (the brief's tag was aspirational); Neo4j's latest 5.x community LTS is `5.26-community`. `infra/docker-compose.yml` and `infra/README.md` updated.
+- `docker compose up -d` brought all five long-running services to `running`:
+  - `rag-qdrant`            healthy (REST on 6333, gRPC on 6334)
+  - `rag-neo4j` 5.26        healthy (Bolt on 7687, browser on 7474)
+  - `rag-redis` 7-alpine    healthy (PONG on 6379)
+  - `rag-ollama`            healthy (API on 11434)
+  - `rag-aspire-dashboard`  running (302 redirect on 18888 — login UI)
+- The `ollama-init` sidecar pulled both `nomic-embed-text` (~270 MB) and `llama3.2` (~2 GB) on first start and exited with code 0. Re-running `docker compose up -d` is a no-op (idempotent).
+- `tools/generate-dataset --small` regenerated the 300-document corpus byte-identically (manifest SHA matches the Phase 0 baseline).
+
 
 ## Next phase
 
