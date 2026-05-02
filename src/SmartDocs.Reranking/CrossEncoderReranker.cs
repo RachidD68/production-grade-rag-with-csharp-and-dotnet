@@ -1,0 +1,76 @@
+using Microsoft.Extensions.AI;
+using SmartDocs.Core.Documents;
+
+namespace SmartDocs.Reranking;
+
+/// <summary>
+/// LLM-as-judge reranker — asks an <see cref="IChatClient"/> to score each
+/// (query, candidate) pair on a 0..1 relevance scale, then re-sorts.
+/// Slower than Cohere/BGE but useful when no rerank API key is available
+/// and a chat model (Ollama llama3.2 fits) is reachable. Drop-in stand-in
+/// for the BGE Reranker v2 path described in Ch 9.
+/// </summary>
+public sealed class CrossEncoderReranker : IReranker
+{
+    private readonly IChatClient _chat;
+
+    public CrossEncoderReranker(IChatClient chat)
+    {
+        ArgumentNullException.ThrowIfNull(chat);
+        _chat = chat;
+    }
+
+    public string Implementation => "cross-encoder-llm";
+
+    public async Task<IReadOnlyList<RetrievalResult>> RerankAsync(
+        string query,
+        IReadOnlyList<RetrievalResult> candidates,
+        int topK,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
+
+        var rescored = new List<RetrievalResult>(candidates.Count);
+        foreach (var c in candidates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var prompt =
+                $"Rate how well the passage answers the question on a scale from 0.0 (irrelevant) " +
+                $"to 1.0 (perfect answer). Reply with only the number, no explanation.\n\n" +
+                $"Question: {query}\n\nPassage: {c.Chunk.Text}";
+            var response = await _chat.GetResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var raw = (response.Text ?? "0").Trim();
+            // Try to extract the first number; default to 0.5 on parse failure.
+            var score = TryParseScore(raw, defaultScore: 0.5);
+            rescored.Add(new RetrievalResult(c.Chunk, score));
+        }
+
+        return [.. rescored.OrderByDescending(r => r.Score).Take(topK)];
+    }
+
+    private static double TryParseScore(string raw, double defaultScore)
+    {
+        for (int i = 0; i < raw.Length; i++)
+        {
+            if (char.IsDigit(raw[i]) || raw[i] == '.')
+            {
+                int end = i;
+                while (end < raw.Length && (char.IsDigit(raw[end]) || raw[end] == '.'))
+                {
+                    end++;
+                }
+                if (double.TryParse(raw[i..end],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var v))
+                {
+                    return Math.Clamp(v, 0.0, 1.0);
+                }
+                break;
+            }
+        }
+        return defaultScore;
+    }
+}
