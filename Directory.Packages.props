@@ -28,7 +28,12 @@
   <ItemGroup Label="Microsoft.Extensions.AI — unified IChatClient / IEmbeddingGenerator">
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.5.1" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.5.1" />
-    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.1-preview.1.25264.1" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.1" />
+  </ItemGroup>
+
+  <ItemGroup Label="LLM provider SDKs">
+    <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageVersion Include="OpenAI" Version="2.10.0" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.VectorData — abstractions GA, connectors preview">
@@ -104,6 +109,7 @@
     <PackageVersion Include="Testcontainers.Qdrant" Version="4.11.0" />
     <PackageVersion Include="Testcontainers.Neo4j" Version="4.11.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.11.0" />
+    <PackageVersion Include="Testcontainers.Ollama" Version="4.11.0" />
   </ItemGroup>
 
   <ItemGroup Label="Benchmarking">

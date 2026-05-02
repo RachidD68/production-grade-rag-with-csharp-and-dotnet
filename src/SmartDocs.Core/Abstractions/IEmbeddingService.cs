@@ -1,0 +1,31 @@
+using SmartDocs.Core.Documents;
+
+namespace SmartDocs.Core.Abstractions;
+
+/// <summary>
+/// Produces dense embedding vectors for <see cref="DocumentChunk"/>s.
+/// This is the SmartDocs domain port — internally, implementations delegate
+/// to <c>Microsoft.Extensions.AI.IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt;</c>
+/// and add domain concerns (rate limiting, model-name capture, batching).
+/// Chapter 3 introduces the default implementation.
+/// </summary>
+public interface IEmbeddingService
+{
+    /// <summary>The embedding-model identifier this service produces vectors for.</summary>
+    string EmbeddingModel { get; }
+
+    /// <summary>The dimensionality of the vectors this service produces.</summary>
+    int Dimensions { get; }
+
+    /// <summary>Embed a single chunk.</summary>
+    Task<EmbeddedChunk> EmbedAsync(DocumentChunk chunk, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Embed a stream of chunks. Implementations are expected to batch per
+    /// the underlying provider's request-size limits and to respect
+    /// rate-limit responses (<c>429 Too Many Requests</c>) using Polly.
+    /// </summary>
+    IAsyncEnumerable<EmbeddedChunk> EmbedAsync(
+        IAsyncEnumerable<DocumentChunk> chunks,
+        CancellationToken cancellationToken = default);
+}
