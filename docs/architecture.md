@@ -1,125 +1,87 @@
 # Architecture
 
-> Updated at the end of every phase. **Last updated: end of Phase 1.**
+> Updated at the end of every phase. **Last updated: end of Phase 8.**
 
-This document is the canonical view of the SmartDocs architecture as it stands *today*. As chapters add capabilities, the diagrams below grow.
+The Contoso SmartDocs companion code is shipped across 18 source projects + 4 test projects + 5 chapter samples + tooling + infra. This document is the canonical view; the per-chapter file paths live in [`chapter-map.md`](chapter-map.md).
 
-## Phase 0 — Project Skeleton
-
-At the end of Phase 0 the solution compiles but no real RAG code is written yet. Each box below is an empty C# project containing only a `Placeholder.cs` file naming the chapter that will populate it.
-
-```mermaid
-flowchart LR
-    subgraph SRC["src/"]
-      Core[SmartDocs.Core]
-      Ingestion[SmartDocs.Ingestion]
-      Retrieval[SmartDocs.Retrieval]
-      Reranking[SmartDocs.Reranking]
-      Routing[SmartDocs.Routing]
-      Generation[SmartDocs.Generation]
-      Agents[SmartDocs.Agents]
-      Mcp[SmartDocs.Mcp]
-      Security[SmartDocs.Security]
-      Evaluation[SmartDocs.Evaluation]
-      Operations[SmartDocs.Operations]
-      Performance[SmartDocs.Performance]
-      Api[SmartDocs.Api]
-      Dashboard[SmartDocs.Dashboard]
-    end
-
-    subgraph TOOLS["tools/"]
-      GenerateDataset[generate-dataset]
-      EvalRunner["eval-runner (Phase 6)"]
-      DeepEvalBridge["deepeval-bridge (Phase 6)"]
-    end
-
-    subgraph TESTS["tests/"]
-      UnitTests
-      IntegrationTests
-      EvalTests
-      SecurityTests
-    end
-
-    subgraph INFRA["infra/ — Docker Compose"]
-      Qdrant
-      Neo4j
-      Redis
-      Ollama
-      AspireDashboard["Aspire Dashboard"]
-    end
-
-    UnitTests --> GenerateDataset
-```
-
-Project references in Phase 0 are minimal — only the `SmartDocs.UnitTests → tools/generate-dataset` reference exists. Real dependencies between `src/` projects are added as code lands in Phases 1–7.
-
-## Target Architecture (Phase 7 endpoint — informational)
-
-The full Contoso SmartDocs runtime is a layered RAG pipeline driven by a Microsoft Agent Framework agent. This diagram is **forward-looking** — none of the boxes besides `SmartDocs.Api` and `Dashboard` produce running code yet.
+## High-level component diagram (Phase 7 endpoint)
 
 ```mermaid
 flowchart TB
-    User[User] -->|HTTP/SSE| Api[SmartDocs.Api]
+    User[User] -->|HTTP / SSE| Api[SmartDocs.Api]
 
-    Api --> Agents[SmartDocs.Agents<br/>ChatClientAgent + Workflow API]
-    Agents --> Routing
-    Agents --> Mcp[SmartDocs.Mcp<br/>tools]
+    subgraph Pipeline["Retrieval pipeline"]
+      Routing[SmartDocs.Routing<br/>Rule + Semantic + Multi]
+      Retrieval[SmartDocs.Retrieval<br/>Dense + Sparse + Hybrid +<br/>Graph + Vectorless +<br/>Decorators &#40;HyDE / Fusion / CRAG&#41;]
+      Reranking[SmartDocs.Reranking<br/>Cohere + CrossEncoder]
+      Generation[SmartDocs.Generation<br/>RagPipeline + PromptTemplateEngine +<br/>Citations + AuditLogger]
+    end
 
+    subgraph Stores
+      Qdrant[(Qdrant)]
+      Neo4j[(Neo4j)]
+      Redis[(Redis)]
+    end
+
+    subgraph Cross["Cross-cutting"]
+      Core[SmartDocs.Core<br/>IChatClient + IEmbeddingGenerator +<br/>ITokenCounter + LlmClientOptions]
+      Ingestion[SmartDocs.Ingestion<br/>Chunking + Embeddings + Multimodal +<br/>Indexing strategies]
+      Performance[SmartDocs.Performance<br/>Caches + Polly]
+      Security[SmartDocs.Security<br/>Sanitizer + Anomaly + ContentFilter]
+      Operations[SmartDocs.Operations<br/>MinHash dedup + Drift + GDPR]
+      Evaluation[SmartDocs.Evaluation<br/>Recall@K + Faithfulness]
+      Mcp[SmartDocs.Mcp<br/>MCP server tools]
+      Agents[SmartDocs.Agents<br/>SmartDocsAgent + Multi-agent workflow]
+    end
+
+    Api --> Routing
     Routing --> Retrieval
-    Retrieval -->|dense| Qdrant[(Qdrant)]
-    Retrieval -->|sparse / hybrid| AzSearch[(Azure AI Search)]
-    Retrieval -->|graph| Neo4j[(Neo4j)]
+    Retrieval -->|dense| Qdrant
+    Retrieval -->|graph| Neo4j
     Retrieval --> Reranking
     Reranking --> Generation
     Generation --> Api
 
     Ingestion --> Qdrant
     Ingestion --> Neo4j
-
-    Performance -.cache.-> Redis[(Redis)]
-    Performance -.OTLP.-> AspireDashboard
-
+    Performance -.cache.-> Redis
     Security -.middleware.-> Api
+    Operations -.GDPR / drift.-> Qdrant
     Evaluation -.gates.-> CI[GitHub Actions]
-    Operations -.drift / GDPR.-> Qdrant
+    Agents --> Retrieval
+    Mcp --> Retrieval
+
+    Core -.foundation.-> Pipeline
+    Core -.foundation.-> Cross
 ```
 
-## Phase 1 — Foundations Land
+## Project dependency summary
 
-By the end of Phase 1, the foundation is in place: `SmartDocs.Core` ships
-domain models and interfaces, `TokenCounter`, `LlmClientOptions`, and
-`AddSmartDocsCore()`. `SmartDocs.Api` exposes `/health`. Two samples
-(`Ch01_HelloWorldRag`, `Ch02_SkToMafMigration`) prove the wiring end-to-end.
+| Project | Depends on | Notes |
+|---|---|---|
+| `SmartDocs.Core` | (none) | Foundation: domain records + interfaces + TokenCounter + LlmClientOptions + AddSmartDocsCore |
+| `SmartDocs.Ingestion` | Core | Embeddings + Chunking + Multimodal + Indexing strategies; Roslyn + PdfPig |
+| `SmartDocs.Retrieval` | Core | Dense / Sparse (in-process BM25) / Hybrid + Decorators + Graph + Vectorless + VectorStores; Qdrant.Client + Neo4j.Driver |
+| `SmartDocs.Reranking` | Core, Retrieval | NoOp + Cohere + CrossEncoder + RerankingMiddleware |
+| `SmartDocs.Routing` | Core, Retrieval | MetadataFilter + QueryConstructor + Routers + ConversationalQueryRewriter |
+| `SmartDocs.Generation` | Core, Retrieval | PromptTemplateEngine + RagPipeline + Citations + AuditLogger |
+| `SmartDocs.Agents` | Core, Retrieval | SmartDocsAgent + MultiAgentWorkflow; MAF Microsoft.Agents.AI + Workflows |
+| `SmartDocs.Mcp` | Core, Retrieval | ModelContextProtocol tools |
+| `SmartDocs.Security` | Core | Sanitizer + Anomaly + ContentFilter |
+| `SmartDocs.Evaluation` | Core, Generation | Retrieval + Generation evaluators |
+| `SmartDocs.Operations` | Core | MinHashDeduplicator + DriftAdapter + GdprDeletionPipeline |
+| `SmartDocs.Performance` | Core, Generation | EmbeddingCache + QueryCache + PollyPolicies |
+| `SmartDocs.Api` | Core, Generation, Retrieval | ASP.NET Core 10 Minimal API; `/health` + `/api/ask` + `/api/ask/stream` (TypedResults.ServerSentEvents) |
+| `SmartDocs.Dashboard` | Core, Evaluation (Phase 8 polish) | Blazor Server eval dashboard — placeholder until Phase 8 |
 
-```mermaid
-flowchart LR
-    Config["appsettings.json<br/>(SmartDocs:Llm.Provider)"] --> AddCore
+## Update history
 
-    subgraph Core["SmartDocs.Core"]
-      Domain["Documents/<br/>Document, DocumentChunk,<br/>EmbeddedChunk, RetrievalResult,<br/>DocumentMetadata"]
-      Abstractions["Abstractions/<br/>IDocumentLoader, IChunker,<br/>IEmbeddingService, IVectorStore,<br/>IRetriever"]
-      Tokens["Tokens/<br/>ITokenCounter, TokenCounter<br/>(cl100k_base default)"]
-      Options["Configuration/<br/>LlmClientOptions<br/>(Ollama | AzureOpenAI)"]
-      AddCore["DependencyInjection/<br/>AddSmartDocsCore()"]
-    end
-
-    AddCore -->|registers| ChatClient["IChatClient"]
-    AddCore -->|registers| EmbedGen["IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt;"]
-    AddCore -->|registers| TokenCounter
-
-    ChatClient -.Ollama.-> Ollama["OllamaApiClient<br/>http://localhost:11434"]
-    ChatClient -.AzureOpenAI.-> AOAI["AzureOpenAIClient<br/>+ AsIChatClient()"]
-    EmbedGen -.Ollama.-> Ollama
-    EmbedGen -.AzureOpenAI.-> AOAIEmb["AzureOpenAIClient<br/>+ AsIEmbeddingGenerator()"]
-
-    Api["SmartDocs.Api<br/>GET /health"] -->|uses| AddCore
-    Ch01["samples/Ch01_HelloWorldRag<br/>brute-force cosine + grounded answer"] -->|uses| AddCore
-    Ch02["samples/Ch02_SkToMafMigration<br/>ChatClientAgent + AIFunction"] -->|uses| AddCore
-```
-
-The other 13 src/ projects still contain only `Placeholder.cs`.
-
-Update history:
-
-- **2026-05-02 (end of Phase 0)** — first cut. Projects exist but contain only placeholders.
-- **2026-05-02 (end of Phase 1)** — `SmartDocs.Core` populated; `SmartDocs.Api/health` live; Ch01 + Ch02 samples runnable; 38 tests green.
+- **2026-05-02 (Phase 0)** — first cut. 18 empty projects + Docker Compose stack + dataset generator.
+- **2026-05-02 (Phase 1)** — `SmartDocs.Core` foundations + Hello-World sample + SK→MAF migration sample.
+- **2026-05-02 (Phase 2)** — full core RAG pipeline (Ch 3–10).
+- **2026-05-02 (Phase 3)** — query intelligence (Ch 11–12).
+- **2026-05-02 (Phase 4)** — graph + hybrid storage (Ch 13–14).
+- **2026-05-02 (Phase 5)** — design patterns (Ch 15–19).
+- **2026-05-02 (Phase 6)** — production concerns (Ch 20–24).
+- **2026-05-02 (Phase 7)** — capstone (Ch 25): `AddSmartDocsRagPipeline()` + Bicep + Vertical Slice variant.
+- **2026-05-02 (Phase 8)** — polish: per-phase reports + samples README + chapter map + this update.

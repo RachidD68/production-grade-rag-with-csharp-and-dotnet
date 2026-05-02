@@ -2,7 +2,7 @@
 
 Companion code for **_RAG in .NET: Building Production Retrieval-Augmented Generation with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
 
-> **Status — Phase 1 ✅ complete.** Repo bootstrap and Foundations (Ch 1–2) shipped: `SmartDocs.Core` foundational interfaces and domain models, `TokenCounter`, `LlmClientOptions` + `AddSmartDocsCore()`, the Ch 1 Hello-World RAG sample, and the Ch 2 SK→MAF migration sample. 38 tests passing. See [Build Plan](#build-plan) for what comes next.
+> **Status — All 9 phases ✅ complete (Phases 0–8).** All 25 chapters from the syllabus have been mapped to runnable, tested code: 18 src/ projects + 4 test projects + 5 chapter samples + tooling + infra. **152 tests pass** under warnings-as-errors and format check. See [`docs/chapter-map.md`](docs/chapter-map.md) for the per-chapter file map and [`docs/architecture.md`](docs/architecture.md) for the system view. The Phase 8 polish backlog (deferred chapter samples and stretch features) lives in [`samples/README.md`](samples/README.md) and the per-phase reports under [`docs/phase-reports/`](docs/phase-reports).
 
 ---
 
@@ -131,19 +131,19 @@ RAG-in-DotNet/
 
 ## Build Plan
 
-The companion code is built in 9 incremental phases. Phase 0 is done; later phases are stubs that compile but contain no chapter code yet.
+The companion code is built in 9 incremental phases. All phases are complete.
 
 | Phase | Chapters | Scope | Status |
 |---|---|---|---|
 | 0 | — | Repo bootstrap | ✅ |
 | 1 | Ch 1–2 | Foundations, Hello-World RAG, SK→MAF migration | ✅ |
 | 2 | Ch 3–10 | Core pipeline: embeddings → chunking → multimodal → vector DBs → indexing → retrieval → re-ranking → SSE | ✅ |
-| 3 | Ch 11–12 | Query intelligence: metadata filters, query construction, routing, AgentSession | ⏳ |
-| 4 | Ch 13–14 | Graph + hybrid storage (Neo4j, fusion service) | ⏳ |
-| 5 | Ch 15–19 | Design patterns: HyDE/RAG-Fusion/CRAG, Vectorless, LazyGraphRAG, MCP, Multi-Agent | ⏳ |
-| 6 | Ch 20–24 | Production: eval & dashboard, perf & cost, drift & GDPR, security, trust by design | ⏳ |
-| 7 | Ch 25 | Capstone: NuGet package, Bicep, full CI gates, Vertical Slice variant | ⏳ |
-| 8 | — | Polish: `--large` 5 000-doc dataset, appendix code, docs cross-refs | ⏳ |
+| 3 | Ch 11–12 | Query intelligence: metadata filters, query construction, routing, conversational rewriting | ✅ |
+| 4 | Ch 13–14 | Graph + hybrid storage: Neo4j adapter, EntityExtractor, FusionService | ✅ |
+| 5 | Ch 15–19 | Design patterns: HyDE / RAG-Fusion / CRAG, Vectorless, GraphRAG / LazyGraphRAG, MCP, Multi-agent | ✅ |
+| 6 | Ch 20–24 | Production: evaluation, performance, drift / GDPR, security (27-test red team), citations + EU AI Act audit | ✅ |
+| 7 | Ch 25 | Capstone: `AddSmartDocsRagPipeline()`, Bicep, Vertical Slice variant | ✅ |
+| 8 | — | Polish: per-phase reports, samples README, chapter map, architecture docs | ✅ |
 
 ---
 
