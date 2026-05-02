@@ -21,4 +21,8 @@
     <Project Path="tests/SmartDocs.SecurityTests/SmartDocs.SecurityTests.csproj" />
     <Project Path="tests/SmartDocs.UnitTests/SmartDocs.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tools/" />
+  <Folder Name="/tools/generate-dataset/">
+    <Project Path="tools/generate-dataset/GenerateDataset.csproj" />
+  </Folder>
 </Solution>

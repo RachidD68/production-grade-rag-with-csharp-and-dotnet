@@ -15,4 +15,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\generate-dataset\GenerateDataset.csproj" />
+  </ItemGroup>
+
 </Project>

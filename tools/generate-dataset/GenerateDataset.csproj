@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Tools.GenerateDataset</RootNamespace>
+    <AssemblyName>generate-dataset</AssemblyName>
+    <!-- This is internal tooling that emits static templated content; locale-aware
+         AppendLine overloads are not informative here. Suppress CA1305 to keep the
+         template literals readable. -->
+    <NoWarn>$(NoWarn);CA1305;CA1303;CA1812</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SmartDocs.UnitTests" />
+  </ItemGroup>
+
+</Project>
