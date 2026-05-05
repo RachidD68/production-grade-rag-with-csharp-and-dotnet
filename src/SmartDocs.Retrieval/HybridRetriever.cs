@@ -38,7 +38,10 @@ public sealed class HybridRetriever : IRetriever
         var candidateK = Math.Max(topK * 2, topK + 5);
         var denseTask = _dense.RetrieveAsync(query, candidateK, cancellationToken);
         var sparseTask = _sparse.RetrieveAsync(query, candidateK, cancellationToken);
-        await Task.WhenAll(denseTask, sparseTask).ConfigureAwait(false);
+
+        // WaitAsync ensures the await unblocks promptly on cancellation even if
+        // one inner retriever has a bug that doesn't cooperate with the token.
+        await Task.WhenAll(denseTask, sparseTask).WaitAsync(cancellationToken).ConfigureAwait(false);
 
         return _merger.Merge(denseTask.Result, sparseTask.Result, topK);
     }

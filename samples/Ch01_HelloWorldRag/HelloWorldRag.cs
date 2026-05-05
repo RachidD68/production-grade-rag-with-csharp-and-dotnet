@@ -82,7 +82,12 @@ internal static class HelloWorldRag
         return response.Text ?? string.Empty;
     }
 
-    /// <summary>Cosine similarity over two vectors. Throws if dimensions differ.</summary>
+    /// <summary>
+    /// Cosine similarity over two vectors. Throws if dimensions differ.
+    /// Accumulates in <see cref="double"/> to stay safe against float overflow
+    /// on un-normalised, high-dimensional inputs; modern embeddings are
+    /// normalised so the precision delta is invisible in practice.
+    /// </summary>
     public static float Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
         if (a.Length != b.Length)
@@ -91,19 +96,19 @@ internal static class HelloWorldRag
                 $"Vector length mismatch: {a.Length} vs {b.Length}", nameof(b));
         }
 
-        float dot = 0f, magA = 0f, magB = 0f;
+        double dot = 0, magA = 0, magB = 0;
         for (int i = 0; i < a.Length; i++)
         {
-            dot += a[i] * b[i];
-            magA += a[i] * a[i];
-            magB += b[i] * b[i];
+            dot += (double)a[i] * b[i];
+            magA += (double)a[i] * a[i];
+            magB += (double)b[i] * b[i];
         }
 
-        if (magA == 0f || magB == 0f)
+        if (magA == 0 || magB == 0)
         {
             return 0f;
         }
 
-        return dot / (MathF.Sqrt(magA) * MathF.Sqrt(magB));
+        return (float)(dot / (Math.Sqrt(magA) * Math.Sqrt(magB)));
     }
 }
