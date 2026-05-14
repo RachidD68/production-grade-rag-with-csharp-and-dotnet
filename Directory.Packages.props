@@ -14,11 +14,11 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.6.1 release candidate (May 2026)">
+  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.6.1 stable (May 2026)">
     <!--
-      MAF is still pre-release (-rc2) as of 1.6.1. The 1.x line is API-stable
-      enough to teach against, but expect the API surface to harden through 1.x.
-      Pin to the exact patch version below; do not float on a range.
+      Stable release line. Pin to the exact patch version below; the project
+      bumps deliberately, not by floating on a range. Verify against the
+      release notes when upgrading.
       Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.6.1
     -->
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.6.1" />
