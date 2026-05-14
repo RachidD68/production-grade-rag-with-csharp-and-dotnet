@@ -4,6 +4,9 @@
     <Project Path="samples/Ch02_SkToMafMigration/Ch02_SkToMafMigration.csproj" />
     <Project Path="samples/Ch03_EmbeddingBenchmarks/Ch03_EmbeddingBenchmarks.csproj" />
     <Project Path="samples/Ch04_ChunkingPlayground/Ch04_ChunkingPlayground.csproj" />
+    <Project Path="samples/Ch14_AzureAiSearchAgent/Ch14_AzureAiSearchAgent.csproj" />
+    <Project Path="samples/Ch15_ChatMessageInjector/Ch15_ChatMessageInjector.csproj" />
+    <Project Path="samples/Ch20_GroundTruthEval/Ch20_GroundTruthEval.csproj" />
     <Project Path="samples/Ch25_VerticalSliceVariant/Ch25_VerticalSliceVariant.csproj" />
   </Folder>
   <Folder Name="/src/">

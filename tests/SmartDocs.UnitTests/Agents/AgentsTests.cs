@@ -28,7 +28,7 @@ public sealed class AgentsTests
     }
 
     [Fact]
-    public async Task MultiAgentWorkflow_runs_researcher_analyst_checker_writer()
+    public async Task MultiAgentWorkflow_Sequential_runs_researcher_analyst_checker_writer()
     {
         // The stub returns increasingly polished text per role so the test
         // can verify the writer's output reaches the surface.
@@ -54,9 +54,54 @@ public sealed class AgentsTests
         ]);
 
         var workflow = new MultiAgentWorkflow(chat, retriever);
-        var answer = await workflow.RunAsync("What is alpha?");
+        var answer = await workflow.RunSequentialAsync("What is alpha?");
 
         Assert.Equal("Final polished answer with [Source 1].", answer);
+    }
+
+    [Fact]
+    public async Task MultiAgentWorkflow_Magentic_returns_manager_decided_answer()
+    {
+        // The Magentic pattern hands orchestration to the Manager agent — it
+        // decides which workers (if any) to invoke via tool calls. The stub
+        // chat client doesn't emit tool calls, so the Manager simply returns
+        // its first response. This test verifies the orchestration plumbing
+        // (session creation, tool wiring, manager construction) is sound;
+        // tool-call routing is exercised in integration tests against a real
+        // LLM.
+        var chat = new StubChatClient(_ =>
+            "Final answer chosen by the Manager [Source 1].");
+        var retriever = new ConstantRetriever([
+            new RetrievalResult(Chunk("a", "alpha"), 0.9),
+        ]);
+
+        var workflow = new MultiAgentWorkflow(chat, retriever);
+        var answer = await workflow.RunMagenticAsync("What is alpha?");
+
+        Assert.False(string.IsNullOrWhiteSpace(answer));
+        Assert.Contains("[Source 1]", answer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SmartDocsAgent_RunWithInjectedChunks_pre_loads_context()
+    {
+        // Verify that pre-injection passes retrieved chunks to the agent as
+        // a preamble, so the agent's first turn starts with grounded context
+        // (no tool call required). The stub asserts on the pre-injection
+        // prefix and answers accordingly.
+        var chat = new StubChatClient(prompt =>
+            prompt.Contains("Pre-retrieved context", StringComparison.Ordinal)
+                ? "Answer drawn from preamble [Source 1]."
+                : "I would need to search.");
+        var retriever = new ConstantRetriever([
+            new RetrievalResult(Chunk("a", "alpha is the first letter"), 0.95),
+        ]);
+
+        var agent = SmartDocsAgent.Create(chat, retriever);
+        var answer = await SmartDocsAgent.RunWithInjectedChunksAsync(
+            agent, "What is alpha?", new ChunkInjectorOptions(retriever, TopK: 1));
+
+        Assert.Equal("Answer drawn from preamble [Source 1].", answer);
     }
 
     private sealed class ConstantRetriever : IRetriever
