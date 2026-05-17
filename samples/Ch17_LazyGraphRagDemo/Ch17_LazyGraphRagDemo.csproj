@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Samples.Ch17_LazyGraphRagDemo</RootNamespace>
+    <AssemblyName>Ch17_LazyGraphRagDemo</AssemblyName>
+  </PropertyGroup>
+
+</Project>
