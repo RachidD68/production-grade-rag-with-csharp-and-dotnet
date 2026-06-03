@@ -1,6 +1,8 @@
-# RAG in .NET — Companion Code
+# Mastering RAG in .NET — Companion Code
 
-Companion code for **_RAG in .NET: Building Production Retrieval-Augmented Generation with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
+Companion code for **_Mastering RAG in .NET: Production Retrieval-Augmented Generation with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
+
+> The .NET solution, samples, and namespaces stay under the `RAG-in-DotNet` identifier — that is the code path; the title above is the reader-facing brand.
 
 > **Status — All 9 phases ✅ complete (Phases 0–8).** All 25 chapters from the syllabus have been mapped to runnable, tested code: 18 src/ projects + 4 test projects + 5 chapter samples + tooling + infra. **152 tests pass** under warnings-as-errors and format check. See [`docs/chapter-map.md`](docs/chapter-map.md) for the per-chapter file map and [`docs/architecture.md`](docs/architecture.md) for the system view. The Phase 8 polish backlog (deferred chapter samples and stretch features) lives in [`samples/README.md`](samples/README.md) and the per-phase reports under [`docs/phase-reports/`](docs/phase-reports).
 
