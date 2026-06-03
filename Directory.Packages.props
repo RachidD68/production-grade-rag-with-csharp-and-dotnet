@@ -14,26 +14,27 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.6.1 stable (May 2026)">
+  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.8.0 stable (June 2026)">
     <!--
       Stable release line. Pin to the exact patch version below; the project
       bumps deliberately, not by floating on a range. Verify against the
       release notes when upgrading.
-      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.6.1
+      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.8.0
+      Bump rationale: docs/decisions/0010-maf-1.8.0-upgrade.md
     -->
-    <PackageVersion Include="Microsoft.Agents.AI" Version="1.6.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.6.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.6.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.6.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.6.1" />
-    <!-- OpenTelemetry wrapper added at 1.6.1; auto-wires the underlying
-         IChatClient with OpenTelemetryChatClient (breaking change from 1.3.0:
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.8.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.8.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.8.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.8.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.8.0" />
+    <!-- OpenTelemetry wrapper auto-wires the underlying IChatClient with
+         OpenTelemetryChatClient (breaking change carried over from 1.3.0:
          do NOT manually wrap when this package is referenced — double-wrap
-         produces duplicate spans). See docs/decisions/0007-maf-1.6.1-upgrade.md. -->
-    <PackageVersion Include="Microsoft.Agents.AI.OpenTelemetry" Version="1.6.1" />
-    <!-- A2A remains preview at the 1.6.1 milestone — see ADR-0006 (updated). -->
-    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.6.1-preview.260514.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.6.1-preview.260514.1" />
+         produces duplicate spans). See docs/decisions/0010-maf-1.8.0-upgrade.md. -->
+    <PackageVersion Include="Microsoft.Agents.AI.OpenTelemetry" Version="1.8.0" />
+    <!-- A2A remains preview at the 1.8.0 milestone — see ADR-0010. -->
+    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.8.0-preview.260528.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.8.0-preview.260528.1" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.AI — unified IChatClient / IEmbeddingGenerator">
