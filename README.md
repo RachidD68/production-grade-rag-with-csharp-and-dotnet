@@ -1,6 +1,6 @@
-# Mastering RAG in .NET — Companion Code
+# Production-Grade RAG with C# and .NET — Companion Code
 
-Companion code for **_Mastering RAG in .NET: Production Retrieval-Augmented Generation with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
+Companion code for **_Production-Grade RAG with C# and .NET: Building Retrieval-Augmented Generation Systems with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
 
 > The .NET solution, samples, and namespaces stay under the `RAG-in-DotNet` identifier — that is the code path; the title above is the reader-facing brand.
 
