@@ -15,15 +15,25 @@
 using System.Diagnostics;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
+using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 
 var endpoint = new Uri(Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434");
 
+// --no-prefix runs every model a second time with EmbeddingPrompt.None so the
+// reader sees the quality margin move when the task prefixes are removed. The
+// default run already prints the correctly-prefixed row.
+var compareNoPrefix = args.Contains("--no-prefix", StringComparer.OrdinalIgnoreCase);
+
+// Each model is paired with the task-prefix scheme it was trained to expect:
+//   nomic-embed-text   -> search_document: / search_query:
+//   mxbai-embed-large  -> query-only "Represent this sentence ..."
+//   OpenAI / Azure      -> EmbeddingPrompt.None (trained without prefixes).
 // Add additional models here once they're pulled with `ollama pull <name>`.
-var models = new[]
+var models = new (string Name, IEmbeddingGenerator<string, Embedding<float>> Gen, EmbeddingPrompt Prompt)[]
 {
-    ("nomic-embed-text", (IEmbeddingGenerator<string, Embedding<float>>)new OllamaApiClient(endpoint, "nomic-embed-text")),
-    // ("mxbai-embed-large", (IEmbeddingGenerator<string, Embedding<float>>)new OllamaApiClient(endpoint, "mxbai-embed-large")),
+    ("nomic-embed-text", new OllamaApiClient(endpoint, "nomic-embed-text"), EmbeddingPrompt.Nomic),
+    // ("mxbai-embed-large", new OllamaApiClient(endpoint, "mxbai-embed-large"), EmbeddingPrompt.Mxbai),
 };
 
 var passages = LoadPassages();
@@ -31,22 +41,21 @@ var (similarPairs, dissimilarPairs) = LoadPairs();
 
 Console.WriteLine($"Embedding benchmark — {passages.Length} passages × {models.Length} models");
 Console.WriteLine();
-Console.WriteLine($"| Model               | Dim  | Mean ms | p50 ms | p95 ms | Sim avg | Dis avg | Margin |");
-Console.WriteLine($"|---------------------|-----:|--------:|-------:|-------:|--------:|--------:|-------:|");
+Console.WriteLine($"| Model               | Prefix | Dim  | Mean ms | p50 ms | p95 ms | Sim avg | Dis avg | Margin |");
+Console.WriteLine($"|---------------------|--------|-----:|--------:|-------:|-------:|--------:|--------:|-------:|");
 
-foreach (var (name, gen) in models)
+foreach (var (name, gen, prompt) in models)
 {
     var lats = new List<long>();
-    var sw = Stopwatch.StartNew();
     GeneratedEmbeddings<Embedding<float>>? lastBatch = null;
     foreach (var p in passages)
     {
         var single = Stopwatch.StartNew();
-        lastBatch = await gen.GenerateAsync(new[] { p });
+        // Latency timing embeds passages as documents — the corpus-side cost.
+        lastBatch = await gen.GenerateAsync(new[] { prompt.Apply(p, EmbeddingTaskType.Document) });
         single.Stop();
         lats.Add(single.ElapsedMilliseconds);
     }
-    sw.Stop();
 
     var dim = lastBatch?[0].Vector.Length ?? 0;
     lats.Sort();
@@ -54,24 +63,46 @@ foreach (var (name, gen) in models)
     var p50 = lats[lats.Count / 2];
     var p95 = lats[(int)(lats.Count * 0.95)];
 
-    // Quality: avg cosine on similar pairs, avg cosine on dissimilar pairs.
-    var simCos = await AvgCosineAsync(gen, similarPairs);
-    var disCos = await AvgCosineAsync(gen, dissimilarPairs);
+    // The correctly-prefixed (asymmetric) row.
+    await PrintQualityRowAsync(name, "yes", dim, mean, p50, p95, gen, prompt);
 
-    Console.WriteLine($"| {name,-19} | {dim,4} | {mean,7:F0} | {p50,6} | {p95,6} | {simCos,7:F3} | {disCos,7:F3} | {(simCos - disCos),6:F3} |");
+    // The without-prefix row — same model, EmbeddingPrompt.None — so the margin
+    // delta is visible side by side. This is the chapter's headline demonstration.
+    if (compareNoPrefix)
+    {
+        await PrintQualityRowAsync(name, "no", dim, mean, p50, p95, gen, EmbeddingPrompt.None);
+    }
 }
 
 Console.WriteLine();
 Console.WriteLine("Wider quality margin (Sim - Dis) = better semantic separation.");
+if (compareNoPrefix)
+{
+    Console.WriteLine("Compare the 'yes' and 'no' rows: removing the task prefixes shrinks the margin.");
+}
+
+async Task PrintQualityRowAsync(
+    string name, string prefixFlag, int dim, double mean, long p50, long p95,
+    IEmbeddingGenerator<string, Embedding<float>> gen, EmbeddingPrompt prompt)
+{
+    var simCos = await AvgCosineAsync(gen, prompt, similarPairs);
+    var disCos = await AvgCosineAsync(gen, prompt, dissimilarPairs);
+    Console.WriteLine($"| {name,-19} | {prefixFlag,-6} | {dim,4} | {mean,7:F0} | {p50,6} | {p95,6} | {simCos,7:F3} | {disCos,7:F3} | {(simCos - disCos),6:F3} |");
+}
 
 static async Task<double> AvgCosineAsync(
     IEmbeddingGenerator<string, Embedding<float>> gen,
-    (string, string)[] pairs)
+    EmbeddingPrompt prompt,
+    (string Query, string Passage)[] pairs)
 {
     var sum = 0.0;
-    foreach (var (a, b) in pairs)
+    foreach (var (q, p) in pairs)
     {
-        var emb = await gen.GenerateAsync(new[] { a, b });
+        var emb = await gen.GenerateAsync(new[]
+        {
+            prompt.Apply(q, EmbeddingTaskType.Query),
+            prompt.Apply(p, EmbeddingTaskType.Document),
+        });
         sum += Cosine(emb[0].Vector.Span, emb[1].Vector.Span);
     }
     return sum / pairs.Length;

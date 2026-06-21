@@ -21,6 +21,14 @@ public interface IEmbeddingService
     Task<EmbeddedChunk> EmbedAsync(DocumentChunk chunk, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Embed a free-text query for retrieval. Distinct from
+    /// <see cref="EmbedAsync(DocumentChunk, CancellationToken)"/> because retrieval
+    /// models often require a query-specific instruction prefix; sending the document
+    /// scheme for a query (or no scheme) degrades recall.
+    /// </summary>
+    Task<ReadOnlyMemory<float>> EmbedQueryAsync(string query, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Embed a stream of chunks. Implementations are expected to batch per
     /// the underlying provider's request-size limits and to respect
     /// rate-limit responses (<c>429 Too Many Requests</c>) using Polly.

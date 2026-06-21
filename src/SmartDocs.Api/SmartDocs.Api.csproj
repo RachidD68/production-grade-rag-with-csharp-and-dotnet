@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SmartDocs.Core\SmartDocs.Core.csproj" />
     <ProjectReference Include="..\SmartDocs.Generation\SmartDocs.Generation.csproj" />
+    <ProjectReference Include="..\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
     <ProjectReference Include="..\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
   </ItemGroup>
 

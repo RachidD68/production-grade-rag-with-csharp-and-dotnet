@@ -3,6 +3,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
+using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 
 namespace SmartDocs.Ingestion.Embeddings;
@@ -15,7 +16,11 @@ public sealed class BatchEmbeddingOptions
     /// <summary>How many chunks to embed per provider call. Default: 32.</summary>
     public int BatchSize { get; set; } = 32;
 
-    /// <summary>How many concurrent batches to keep in flight. Default: 4.</summary>
+    /// <summary>
+    /// How many provider calls to keep in flight at once. Honoured by
+    /// <see cref="BatchEmbeddingPipeline"/> via a concurrency gate; output order
+    /// is preserved regardless. Values below 1 are treated as 1. Default: 4.
+    /// </summary>
     public int MaxConcurrency { get; set; } = 4;
 
     /// <summary>How many retry attempts on a 429 / transient failure. Default: 3.</summary>
@@ -24,14 +29,16 @@ public sealed class BatchEmbeddingOptions
 
 /// <summary>
 /// Embeds many <see cref="DocumentChunk"/>s with provider-side batching,
-/// configurable concurrency, and Polly-backed exponential-backoff retry on
-/// 429 / transient failures. Order is preserved across the input/output
-/// streams.
+/// bounded concurrency, and Polly-backed exponential-backoff retry on
+/// 429 / transient failures. Up to <see cref="BatchEmbeddingOptions.MaxConcurrency"/>
+/// batches are kept in flight at once, yet the output order always matches the
+/// input order: results are reassembled by batch index before they are yielded.
 /// </summary>
 public sealed partial class BatchEmbeddingPipeline
 {
     private readonly IEmbeddingGenerator<string, Embedding<float>> _generator;
     private readonly string _embeddingModel;
+    private readonly EmbeddingPrompt _prompt;
     private readonly BatchEmbeddingOptions _options;
     private readonly ResiliencePipeline _retryPipeline;
     private readonly ILogger<BatchEmbeddingPipeline> _logger;
@@ -40,7 +47,8 @@ public sealed partial class BatchEmbeddingPipeline
         IEmbeddingGenerator<string, Embedding<float>> generator,
         string embeddingModel,
         BatchEmbeddingOptions options,
-        ILogger<BatchEmbeddingPipeline> logger)
+        ILogger<BatchEmbeddingPipeline> logger,
+        EmbeddingPrompt? prompt = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
         ArgumentException.ThrowIfNullOrWhiteSpace(embeddingModel);
@@ -51,6 +59,7 @@ public sealed partial class BatchEmbeddingPipeline
         _embeddingModel = embeddingModel;
         _options = options;
         _logger = logger;
+        _prompt = prompt ?? EmbeddingPrompt.None;
 
         var builder = new ResiliencePipelineBuilder();
         if (options.MaxRetries >= 1)
@@ -70,30 +79,70 @@ public sealed partial class BatchEmbeddingPipeline
         _retryPipeline = builder.Build();
     }
 
-    /// <summary>Embed a stream of chunks, preserving input order.</summary>
+    /// <summary>
+    /// Embed a stream of chunks. Up to <see cref="BatchEmbeddingOptions.MaxConcurrency"/>
+    /// provider calls run in parallel, but the yielded results are reassembled in
+    /// input order — so the Nth output always corresponds to the Nth input.
+    /// </summary>
     public async IAsyncEnumerable<EmbeddedChunk> EmbedAsync(
         IAsyncEnumerable<DocumentChunk> chunks,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(chunks);
 
-        // Buffer into batches, then embed each batch under the retry pipeline.
-        var batch = new List<DocumentChunk>(_options.BatchSize);
+        // Buffer the stream into fixed-size batches, preserving order. Each batch
+        // carries its position so results can be reassembled deterministically.
+        var batches = new List<List<DocumentChunk>>();
+        var current = new List<DocumentChunk>(_options.BatchSize);
         await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
-            batch.Add(chunk);
-            if (batch.Count >= _options.BatchSize)
+            current.Add(chunk);
+            if (current.Count >= _options.BatchSize)
             {
-                foreach (var embedded in await EmbedBatchAsync(batch, cancellationToken).ConfigureAwait(false))
-                {
-                    yield return embedded;
-                }
-                batch.Clear();
+                batches.Add(current);
+                current = new List<DocumentChunk>(_options.BatchSize);
             }
         }
-        if (batch.Count > 0)
+        if (current.Count > 0)
         {
-            foreach (var embedded in await EmbedBatchAsync(batch, cancellationToken).ConfigureAwait(false))
+            batches.Add(current);
+        }
+
+        if (batches.Count == 0)
+        {
+            yield break;
+        }
+
+        // Dispatch batches under a concurrency gate. Results land in an
+        // index-keyed array so reassembly is order-preserving regardless of the
+        // order in which the provider calls actually complete.
+        var maxConcurrency = Math.Max(1, _options.MaxConcurrency);
+        using var gate = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+        var results = new EmbeddedChunk[batches.Count][];
+        var tasks = new Task[batches.Count];
+        for (int i = 0; i < batches.Count; i++)
+        {
+            var index = i;
+            var batch = batches[index];
+            tasks[index] = Task.Run(async () =>
+            {
+                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    results[index] = await EmbedBatchAsync(batch, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }, cancellationToken);
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        foreach (var batchResult in results)
+        {
+            foreach (var embedded in batchResult)
             {
                 yield return embedded;
             }
@@ -104,7 +153,7 @@ public sealed partial class BatchEmbeddingPipeline
         List<DocumentChunk> batch,
         CancellationToken cancellationToken)
     {
-        var texts = batch.Select(c => c.Text).ToArray();
+        var texts = batch.Select(c => _prompt.Apply(c.Text, EmbeddingTaskType.Document)).ToArray();
         var generated = await _retryPipeline.ExecuteAsync(
             async ct => await _generator.GenerateAsync(texts, cancellationToken: ct).ConfigureAwait(false),
             cancellationToken).ConfigureAwait(false);

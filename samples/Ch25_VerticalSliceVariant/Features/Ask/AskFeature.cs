@@ -1,8 +1,12 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartDocs.Core.Abstractions;
+using SmartDocs.Core.Configuration;
 using SmartDocs.Core.Documents;
 using SmartDocs.Core.Tokens;
 using SmartDocs.Generation;
+using SmartDocs.Ingestion.Embeddings;
 using SmartDocs.Retrieval;
 using SmartDocs.Retrieval.VectorStores;
 
@@ -28,9 +32,19 @@ public static class AskFeature
             SeedAsync(store, emb).GetAwaiter().GetResult();
             return store;
         });
+        services.AddSingleton<IEmbeddingService>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<LlmClientOptions>>().Value;
+            // Dimensions is metadata the dense path never reads; 1 satisfies the guard.
+            return new EmbeddingService(
+                sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                opts.EmbeddingModel,
+                dimensions: 1,
+                sp.GetRequiredService<ILogger<EmbeddingService>>());
+        });
         services.AddSingleton<IRetriever>(sp =>
             new DenseRetriever(
-                sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+                sp.GetRequiredService<IEmbeddingService>(),
                 sp.GetRequiredService<IVectorStore>()));
         services.AddSingleton(sp =>
             new PromptTemplateEngine(sp.GetRequiredService<ITokenCounter>()));

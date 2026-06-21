@@ -17,14 +17,26 @@ namespace SmartDocs.Ingestion.Embeddings;
 public sealed class EmbeddingService : IEmbeddingService
 {
     private readonly IEmbeddingGenerator<string, Embedding<float>> _generator;
+    private readonly EmbeddingPrompt _prompt;
     private readonly ILogger<EmbeddingService> _logger;
 
     /// <summary>Create the service over an <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.</summary>
+    /// <param name="generator">The underlying Microsoft.Extensions.AI generator.</param>
+    /// <param name="embeddingModel">The embedding-model identifier captured on every vector.</param>
+    /// <param name="dimensions">The dimensionality of the produced vectors.</param>
+    /// <param name="logger">Diagnostics logger.</param>
+    /// <param name="prompt">
+    /// The per-model task-instruction prefix scheme. Defaults to
+    /// <see cref="EmbeddingPrompt.None"/> (correct for OpenAI / Azure OpenAI, which are
+    /// trained without prefixes). Supply <see cref="EmbeddingPrompt.Nomic"/> /
+    /// <see cref="EmbeddingPrompt.Mxbai"/> when the model expects task prefixes.
+    /// </param>
     public EmbeddingService(
         IEmbeddingGenerator<string, Embedding<float>> generator,
         string embeddingModel,
         int dimensions,
-        ILogger<EmbeddingService> logger)
+        ILogger<EmbeddingService> logger,
+        EmbeddingPrompt? prompt = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
         ArgumentException.ThrowIfNullOrWhiteSpace(embeddingModel);
@@ -35,6 +47,7 @@ public sealed class EmbeddingService : IEmbeddingService
         EmbeddingModel = embeddingModel;
         Dimensions = dimensions;
         _logger = logger;
+        _prompt = prompt ?? EmbeddingPrompt.None;
     }
 
     /// <inheritdoc />
@@ -47,8 +60,21 @@ public sealed class EmbeddingService : IEmbeddingService
     public async Task<EmbeddedChunk> EmbedAsync(DocumentChunk chunk, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(chunk);
-        var generated = await _generator.GenerateAsync([chunk.Text], cancellationToken: cancellationToken);
+        var generated = await _generator.GenerateAsync(
+            [_prompt.Apply(chunk.Text, EmbeddingTaskType.Document)],
+            cancellationToken: cancellationToken).ConfigureAwait(false);
         return new EmbeddedChunk(chunk, generated[0].Vector, EmbeddingModel);
+    }
+
+    /// <inheritdoc />
+    public async Task<ReadOnlyMemory<float>> EmbedQueryAsync(
+        string query, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+        var generated = await _generator.GenerateAsync(
+            [_prompt.Apply(query, EmbeddingTaskType.Query)],
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        return generated[0].Vector;
     }
 
     /// <inheritdoc />

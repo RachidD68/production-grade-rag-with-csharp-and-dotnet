@@ -12,6 +12,7 @@
 using System.Net.ServerSentEvents;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartDocs.Api;
 using SmartDocs.Core.Abstractions;
@@ -20,6 +21,7 @@ using SmartDocs.Core.DependencyInjection;
 using SmartDocs.Core.Documents;
 using SmartDocs.Core.Tokens;
 using SmartDocs.Generation;
+using SmartDocs.Ingestion.Embeddings;
 using SmartDocs.Retrieval;
 using SmartDocs.Retrieval.VectorStores;
 
@@ -35,9 +37,24 @@ builder.Services.AddSingleton<IVectorStore>(sp =>
     SeedAsync(store, embeddings).GetAwaiter().GetResult();
     return store;
 });
+// The retriever embeds the query through IEmbeddingService so it picks up the
+// model's query task prefix (the matching half of the document prefix used at
+// index time). EmbeddingPrompt.None keeps OpenAI/Azure behaviour unchanged; an
+// Ollama deployment would pass EmbeddingPrompt.Nomic/Mxbai here.
+builder.Services.AddSingleton<IEmbeddingService>(sp =>
+{
+    var opts = sp.GetRequiredService<IOptions<LlmClientOptions>>().Value;
+    // Dimensions is metadata the dense retrieval path never reads; the real
+    // width comes from the generated vectors. 1 satisfies the positive guard.
+    return new EmbeddingService(
+        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+        opts.EmbeddingModel,
+        dimensions: 1,
+        sp.GetRequiredService<ILogger<EmbeddingService>>());
+});
 builder.Services.AddSingleton<IRetriever>(sp =>
     new DenseRetriever(
-        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(),
+        sp.GetRequiredService<IEmbeddingService>(),
         sp.GetRequiredService<IVectorStore>()));
 builder.Services.AddSingleton(sp =>
     new PromptTemplateEngine(sp.GetRequiredService<ITokenCounter>()));

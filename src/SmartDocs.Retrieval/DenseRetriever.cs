@@ -1,4 +1,3 @@
-using Microsoft.Extensions.AI;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 
@@ -7,14 +6,17 @@ namespace SmartDocs.Retrieval;
 /// <summary>
 /// Dense retriever — embeds the query with the same model used at index
 /// time and asks the underlying <see cref="IVectorStore"/> for the nearest
-/// neighbours.
+/// neighbours. Routing through <see cref="IEmbeddingService.EmbedQueryAsync"/>
+/// (rather than a raw <c>IEmbeddingGenerator</c>) guarantees the query is
+/// embedded with the model's <em>query</em> task prefix — the matching half of
+/// the document prefix applied at index time.
 /// </summary>
 public sealed class DenseRetriever : IRetriever
 {
-    private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddings;
+    private readonly IEmbeddingService _embeddings;
     private readonly IVectorStore _store;
 
-    public DenseRetriever(IEmbeddingGenerator<string, Embedding<float>> embeddings, IVectorStore store)
+    public DenseRetriever(IEmbeddingService embeddings, IVectorStore store)
     {
         ArgumentNullException.ThrowIfNull(embeddings);
         ArgumentNullException.ThrowIfNull(store);
@@ -32,9 +34,7 @@ public sealed class DenseRetriever : IRetriever
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
 
-        var generated = await _embeddings.GenerateAsync(
-            new[] { query }, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var queryVec = generated[0].Vector;
+        var queryVec = await _embeddings.EmbedQueryAsync(query, cancellationToken).ConfigureAwait(false);
         return await _store.SearchAsync(queryVec, topK, cancellationToken).ConfigureAwait(false);
     }
 }

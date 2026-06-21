@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Ingestion.Embeddings;
 using SmartDocs.Retrieval;
 using SmartDocs.Retrieval.VectorStores;
 
@@ -16,6 +18,12 @@ public sealed class RetrieverTests
     private static EmbeddedChunk Embed(string id, string text, float[] vec)
         => new(Chunk(id, text), vec, "stub");
 
+    // Wrap a raw stub generator as the IEmbeddingService DenseRetriever now
+    // depends on. The default EmbeddingPrompt.None passes text through unchanged,
+    // so the query vector is identical to calling the generator directly.
+    private static EmbeddingService Service(StubEmbeddingGenerator stub)
+        => new(stub, "stub-model", 1, NullLogger<EmbeddingService>.Instance);
+
     [Fact]
     public async Task Dense_retriever_returns_top_k_from_in_memory_store()
     {
@@ -27,7 +35,7 @@ public sealed class RetrieverTests
             Embed("c", "vacation policy", [0.95f, 0.05f]),
         });
         var stub = new StubEmbeddingGenerator(_ => [1f, 0f]);
-        var dense = new DenseRetriever(stub, store);
+        var dense = new DenseRetriever(Service(stub), store);
 
         var hits = await dense.RetrieveAsync("vacation", topK: 2);
 
@@ -87,7 +95,7 @@ public sealed class RetrieverTests
             Embed("remote-doc",   "Remote work allowed 3 days per week.",     [0f, 1f]),
         });
         var stubEmb = new StubEmbeddingGenerator(_ => [1f, 0f]);
-        var dense = new DenseRetriever(stubEmb, store);
+        var dense = new DenseRetriever(Service(stubEmb), store);
 
         var sparse = new SparseRetriever();
         sparse.Index(new[]
