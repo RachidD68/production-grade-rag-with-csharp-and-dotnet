@@ -1,271 +1,133 @@
 // Chapter 16 — Vectorless Retrieval.
 //
-// Demonstrates structural/vectorless retrieval on a markdown specification.
-// Builds a StructuralNode tree from a sample markdown document, then shows
-// how section-based lookup, tree traversal, and cross-reference following
-// can answer queries that pure vector search would struggle with.
+// An offline, deterministic recall comparison of three retrievers over one
+// hand-shaped GDPR-like corpus:
+//   * structural — deterministic id lookup + cross-reference following
+//     (SmartDocs.Retrieval.Vectorless.StructuralRetriever),
+//   * vector     — dense search over the same articles chunked one-per-article
+//     (DenseRetriever + InMemoryVectorStore, FNV bag-of-words embedder),
+//   * hybrid     — HybridRouter routes by query kind: identifier -> structural,
+//     topic -> vector, mixed -> RRF fusion of both (Ch 8).
+//
+// A ~16-query eval set is pre-tagged identifier / topic / both. The printed
+// table shows structural winning outright on identifier queries (exact lookup),
+// vector pulling its weight on topic queries, and the hybrid router taking the
+// best of each. Fully offline and deterministic: a stable FNV-1a bag-of-words
+// embedder stands in for a real model (never string.GetHashCode) and an offline
+// identifier extractor stands in for the LLM, so the numbers reproduce in CI.
 //
 // Run:
 //   dotnet run --project samples/Ch16_VectorlessRetrieval
 
-// --- Sample markdown document (API specification) ---
+using Microsoft.Extensions.Logging.Abstractions;
+using RagInDotNet.Samples.Ch16_VectorlessRetrieval;
+using SmartDocs.Core.Abstractions;
+using SmartDocs.Core.Documents;
+using SmartDocs.Ingestion.Embeddings;
+using SmartDocs.Retrieval;
+using SmartDocs.Retrieval.Vectorless;
+using SmartDocs.Retrieval.VectorStores;
+using SmartDocs.Routing;
 
-const string SampleMarkdown = """
-    # API Specification v2.1
-
-    ## Authentication
-    All endpoints require Bearer token authentication.
-    Tokens expire after 3600 seconds.
-    See [Rate Limiting](#rate-limiting) for throttling details.
-
-    ### OAuth2 Flow
-    Use the /oauth/token endpoint with client_credentials grant.
-    Refresh tokens are valid for 30 days.
-
-    ### API Keys
-    Legacy API keys are deprecated as of v2.0.
-    Migration deadline: 2026-06-01.
-    See [Authentication](#authentication) for the recommended approach.
-
-    ## Rate Limiting
-    Default rate limit: 1000 requests per minute.
-    Burst allowance: 50 requests per second.
-    See [Authentication](#authentication) for token-based rate tiers.
-
-    ### Enterprise Tier
-    Enterprise clients get 10,000 requests per minute.
-    Contact sales for custom limits.
-
-    ## Error Codes
-    All errors follow RFC 7807 Problem Details format.
-
-    ### 429 Too Many Requests
-    Returned when rate limit is exceeded.
-    Retry-After header indicates wait time in seconds.
-    See [Rate Limiting](#rate-limiting) for limit details.
-    """;
-
-// --- Parse markdown into structural tree ---
-
-var nodes = ParseMarkdown(SampleMarkdown);
-
-Console.WriteLine("=== Ch16: Vectorless Retrieval ===");
+Console.WriteLine("=== Ch16: Vectorless Retrieval — structural / vector / hybrid recall ===");
 Console.WriteLine();
-Console.WriteLine($"Parsed {nodes.Count} structural nodes:");
-foreach (var node in nodes.Values)
+
+const int K = 5;
+
+// --- Structural index: parse the corpus into an id-linked tree. --------------
+var index = DocumentStructureParser.Parse(Corpus.Title, Corpus.Markdown);
+var articleNodes = index.AllNodes().Where(n => n.Id.StartsWith("Art", StringComparison.Ordinal)).ToList();
+Console.WriteLine($"Corpus: {articleNodes.Count} articles | Eval set: {Corpus.EvalSet.Count} queries (recall@{K})");
+Console.WriteLine(
+    $"Cross-references resolved: " +
+    string.Join(", ", articleNodes
+        .Where(n => n.CrossReferences.Count > 0)
+        .Select(n => $"{n.Id}->[{string.Join(",", n.CrossReferences)}]")));
+Console.WriteLine();
+
+// --- Vector index: embed each article as one chunk into the in-memory store. --
+var embedder = new BagOfWordsEmbeddingGenerator();
+var embeddingService = new EmbeddingService(
+    embedder, "bag-of-words-256", 256, NullLogger<EmbeddingService>.Instance);
+
+var store = new InMemoryVectorStore("ch16-eval");
+await store.EnsureCollectionExistsAsync().ConfigureAwait(false);
+foreach (var node in articleNodes)
 {
-    var indent = node.Type == "h3" ? "    " : node.Type == "h2" ? "  " : "";
-    Console.WriteLine($"{indent}[{node.Id}] ({node.Type}) {node.Title}");
+    // Chunk id == node id, so both legs match the gold id the same way.
+    var meta = new DocumentMetadata(
+        node.Id, "gdpr", "Legal", "All", "Public", "Contract",
+        2026, "gdpr", new DateOnly(2026, 1, 1), node.Title);
+    var text = $"{node.Title}\n{node.Text}";
+    var chunk = new DocumentChunk(node.Id, "gdpr", 0, text, 0, text.Length, meta);
+    var embedded = await embeddingService.EmbedAsync(chunk).ConfigureAwait(false);
+    await store.UpsertAsync([embedded]).ConfigureAwait(false);
 }
 
-// --- Demonstrate retrieval strategies ---
+// --- The three retrievers. ----------------------------------------------------
+IRetriever vector = new DenseRetriever(embeddingService, store);
 
-Console.WriteLine();
-Console.WriteLine("--- Strategy 1: Lookup by Section ID ---");
-var target = LookupById(nodes, "rate-limiting");
-if (target is not null)
-{
-    Console.WriteLine($"  Found: [{target.Id}] {target.Title}");
-    Console.WriteLine($"  Content: {target.Content}");
-}
+// Structural: offline identifier extraction, with the vector leg as the topic
+// fallback so topic queries still return something.
+IRetriever structural = new StructuralRetriever(index, new OfflineIdentifierChatClient(), topicFallback: vector);
 
-Console.WriteLine();
-Console.WriteLine("--- Strategy 2: Tree Traversal (children of 'authentication') ---");
-var children = GetChildren(nodes, "authentication");
-foreach (var child in children)
-{
-    Console.WriteLine($"  [{child.Id}] {child.Title}: {Truncate(child.Content, 60)}");
-}
+// Hybrid: classify the query, then route to structural / vector / fused(RRF).
+IRetriever fused = new HybridRetriever(structural, vector);
+IRetriever hybrid = new HybridRouter(new KeywordRouteClassifier(), structural, vector, fused);
 
-Console.WriteLine();
-Console.WriteLine("--- Strategy 3: Cross-Reference Following ---");
-Console.WriteLine("  Starting at '429-too-many-requests', following cross-refs:");
-var visited = FollowCrossRefs(nodes, "429-too-many-requests", maxDepth: 3);
-foreach (var (node, depth) in visited)
+// --- Evaluate recall@K, overall and per query kind. ---------------------------
+var retrievers = new (string Name, IRetriever Retriever)[]
 {
-    var indent = new string(' ', depth * 2 + 2);
-    Console.WriteLine($"{indent}[depth={depth}] [{node.Id}] {node.Title}");
-}
+    ("structural", structural),
+    ("vector", vector),
+    ("hybrid", hybrid),
+};
 
-Console.WriteLine();
-Console.WriteLine("--- Why this beats vector search ---");
-Console.WriteLine("  Query: 'What is the rate limit for enterprise clients?'");
-Console.WriteLine("  Vector search might return the general 'Rate Limiting' section.");
-Console.WriteLine("  Structural retrieval: navigate to 'rate-limiting' -> child 'enterprise-tier':");
-var rateLimiting = LookupById(nodes, "rate-limiting");
-if (rateLimiting is not null)
+var kinds = new[] { QueryKind.Identifier, QueryKind.Topic, QueryKind.Both };
+var rows = new List<(string Name, double Overall, Dictionary<QueryKind, double> ByKind)>();
+
+foreach (var (name, retriever) in retrievers)
 {
-    var enterpriseChildren = GetChildren(nodes, "rate-limiting");
-    var enterprise = enterpriseChildren.FirstOrDefault(c => c.Id == "enterprise-tier");
-    if (enterprise is not null)
+    var byKind = new Dictionary<QueryKind, double>();
+    foreach (var kind in kinds)
     {
-        Console.WriteLine($"  Direct answer: {enterprise.Content}");
-    }
-}
-
-Console.WriteLine();
-Console.WriteLine("Done.");
-return;
-
-// --- Parser ---
-
-static Dictionary<string, StructuralNode> ParseMarkdown(string markdown)
-{
-    var nodes = new Dictionary<string, StructuralNode>();
-    var lines = markdown.Split('\n', StringSplitOptions.TrimEntries);
-
-    string? currentId = null;
-    string? currentType = null;
-    string? currentTitle = null;
-    string? currentParentId = null;
-    var contentLines = new List<string>();
-    var crossRefs = new List<string>();
-
-    foreach (var line in lines)
-    {
-        if (line.StartsWith("# ", StringComparison.Ordinal) || line.StartsWith("## ", StringComparison.Ordinal) || line.StartsWith("### ", StringComparison.Ordinal))
+        var queries = Corpus.EvalSet.Where(q => q.Kind == kind).ToList();
+        var hitCount = 0;
+        foreach (var q in queries)
         {
-            // Flush previous node.
-            if (currentId is not null)
+            var hits = await retriever.RetrieveAsync(q.Query, K).ConfigureAwait(false);
+            if (hits.Any(h => string.Equals(h.Chunk.ChunkId, q.GoldId, StringComparison.Ordinal)))
             {
-                FlushNode(nodes, currentId, currentType!, currentTitle!, currentParentId, contentLines, crossRefs);
-            }
-
-            // Parse heading.
-            var level = line.TakeWhile(c => c == '#').Count();
-            currentType = $"h{level}";
-            currentTitle = line[(level + 1)..].Trim();
-            currentId = Slugify(currentTitle);
-            currentParentId = level switch
-            {
-                3 => FindParentH2(nodes),
-                2 => FindRootId(nodes),
-                _ => null,
-            };
-            contentLines.Clear();
-            crossRefs.Clear();
-        }
-        else if (!string.IsNullOrWhiteSpace(line))
-        {
-            contentLines.Add(line);
-
-            // Extract cross-references like [text](#anchor).
-            var idx = 0;
-            while ((idx = line.IndexOf("](#", idx, StringComparison.Ordinal)) >= 0)
-            {
-                var end = line.IndexOf(')', idx + 3);
-                if (end > idx + 3)
-                {
-                    crossRefs.Add(line[(idx + 3)..end]);
-                }
-
-                idx = end > 0 ? end : idx + 1;
+                hitCount++;
             }
         }
+        byKind[kind] = queries.Count == 0 ? 0 : (double)hitCount / queries.Count;
     }
 
-    // Flush last node.
-    if (currentId is not null)
+    var totalHits = 0;
+    foreach (var q in Corpus.EvalSet)
     {
-        FlushNode(nodes, currentId, currentType!, currentTitle!, currentParentId, contentLines, crossRefs);
+        var hits = await retriever.RetrieveAsync(q.Query, K).ConfigureAwait(false);
+        if (hits.Any(h => string.Equals(h.Chunk.ChunkId, q.GoldId, StringComparison.Ordinal)))
+        {
+            totalHits++;
+        }
     }
-
-    return nodes;
+    rows.Add((name, (double)totalHits / Corpus.EvalSet.Count, byKind));
 }
 
-static void FlushNode(
-    Dictionary<string, StructuralNode> nodes,
-    string id, string type, string title, string? parentId,
-    List<string> contentLines, List<string> crossRefs)
+// --- Comparison table. --------------------------------------------------------
+Console.WriteLine(
+    $"{"retriever",-12} {"identifier",12} {"topic",10} {"both",8} {"overall",10}");
+Console.WriteLine(new string('-', 56));
+foreach (var (name, overall, byKind) in rows)
 {
-    var node = new StructuralNode(
-        id, type, title,
-        string.Join(" ", contentLines),
-        parentId,
-        [],
-        [.. crossRefs]);
-    nodes[id] = node;
-
-    // Register as child of parent.
-    if (parentId is not null && nodes.TryGetValue(parentId, out var parent))
-    {
-        parent.Children.Add(id);
-    }
+    Console.WriteLine(
+        $"{name,-12} {byKind[QueryKind.Identifier],12:P0} {byKind[QueryKind.Topic],10:P0} " +
+        $"{byKind[QueryKind.Both],8:P0} {overall,10:P0}");
 }
-
-static string? FindParentH2(Dictionary<string, StructuralNode> nodes) =>
-    nodes.Values.LastOrDefault(n => n.Type == "h2")?.Id;
-
-static string? FindRootId(Dictionary<string, StructuralNode> nodes) =>
-    nodes.Values.FirstOrDefault(n => n.Type == "h1")?.Id;
-
-static string Slugify(string title) =>
-    title.ToLowerInvariant()
-        .Replace(' ', '-')
-        .Replace(".", "")
-        .Replace(",", "");
-
-// --- Retriever ---
-
-static StructuralNode? LookupById(Dictionary<string, StructuralNode> nodes, string id) =>
-    nodes.GetValueOrDefault(id);
-
-static IReadOnlyList<StructuralNode> GetChildren(Dictionary<string, StructuralNode> nodes, string parentId)
-{
-    if (!nodes.TryGetValue(parentId, out var parent))
-    {
-        return [];
-    }
-
-    return parent.Children
-        .Where(nodes.ContainsKey)
-        .Select(cid => nodes[cid])
-        .ToList();
-}
-
-static IReadOnlyList<(StructuralNode Node, int Depth)> FollowCrossRefs(
-    Dictionary<string, StructuralNode> nodes,
-    string startId,
-    int maxDepth)
-{
-    var results = new List<(StructuralNode, int)>();
-    var visitedSet = new HashSet<string>();
-    FollowRecursive(nodes, startId, 0, maxDepth, visitedSet, results);
-    return results;
-}
-
-static void FollowRecursive(
-    Dictionary<string, StructuralNode> nodes,
-    string id,
-    int depth,
-    int maxDepth,
-    HashSet<string> visitedSet,
-    List<(StructuralNode, int)> results)
-{
-    if (depth > maxDepth || !visitedSet.Add(id) || !nodes.TryGetValue(id, out var node))
-    {
-        return;
-    }
-
-    results.Add((node, depth));
-
-    foreach (var crossRef in node.CrossRefs)
-    {
-        FollowRecursive(nodes, crossRef, depth + 1, maxDepth, visitedSet, results);
-    }
-}
-
-static string Truncate(string s, int max) =>
-    s.Length <= max ? s : s[..max] + "...";
-
-// --- Domain model (must follow top-level statements) ---
-
-/// <summary>A node in the structural document tree.</summary>
-sealed record StructuralNode(
-    string Id,
-    string Type,
-    string Title,
-    string Content,
-    string? ParentId,
-    List<string> Children,
-    List<string> CrossRefs);
+Console.WriteLine();
+Console.WriteLine($"Recall@{K} over {Corpus.EvalSet.Count} pre-tagged queries, matched on node id.");
+Console.WriteLine("Structural lookups are exact on identifier queries; the hybrid router gets");
+Console.WriteLine("the best of both by routing identifiers to structural and topics to vector.");
+return 0;

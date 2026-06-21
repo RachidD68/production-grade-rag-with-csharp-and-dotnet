@@ -5,18 +5,26 @@ using SmartDocs.Core.Documents;
 namespace SmartDocs.Retrieval.Vectorless;
 
 /// <summary>
-/// Vectorless RAG — uses an <see cref="IChatClient"/> to classify the
-/// query against the document structure (titles + paths only) and
-/// returns the matching section's body. Wins on hierarchical corpora
-/// (legal contracts: Article > Section > Clause; technical manuals;
-/// regulatory filings) where structural location is the right granularity.
+/// The <strong>topic-query fallback</strong> for structural retrieval. When a
+/// question names no explicit identifier, this router asks an
+/// <see cref="IChatClient"/> to pick the most relevant section(s) of the
+/// document by title and path, then returns those sections' text.
+/// <para>
+/// This is <em>not</em> "vectorless retrieval" in the deterministic sense of
+/// <see cref="StructuralRetriever"/> (O(1) id lookup, exact cross-reference
+/// following). It is LLM routing: a non-deterministic model call that stands in
+/// for the chapter's "topic lookup … a vector retrieval over node titles, a
+/// keyword search, or a hand-curated mapping." Wire it in as the
+/// <c>topicFallback</c> argument to <see cref="StructuralRetriever"/>.
+/// </para>
 /// </summary>
-public sealed class VectorlessRetriever : IRetriever
+public sealed class LlmSectionRouter : IRetriever
 {
     private readonly StructuralIndex _index;
     private readonly IChatClient _chat;
 
-    public VectorlessRetriever(StructuralIndex index, IChatClient chat)
+    /// <summary>Create the router over a structural index and a chat client.</summary>
+    public LlmSectionRouter(StructuralIndex index, IChatClient chat)
     {
         ArgumentNullException.ThrowIfNull(index);
         ArgumentNullException.ThrowIfNull(chat);
@@ -24,8 +32,10 @@ public sealed class VectorlessRetriever : IRetriever
         _chat = chat;
     }
 
-    public string Strategy => "vectorless";
+    /// <inheritdoc />
+    public string Strategy => "llm-section";
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<RetrievalResult>> RetrieveAsync(
         string query,
         int topK,
@@ -34,9 +44,8 @@ public sealed class VectorlessRetriever : IRetriever
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
 
-        var nodes = _index.Root.AllNodes().ToList();
-        var titles = string.Join("\n",
-            nodes.Select((n, i) => $"{i}: {n.Path}"));
+        var nodes = _index.AllNodes().ToList();
+        var titles = string.Join("\n", nodes.Select((n, i) => $"{i}: {n.Path}"));
 
         var prompt =
             $"You are routing a question to the most relevant section(s) of a structured document. " +
@@ -63,41 +72,9 @@ public sealed class VectorlessRetriever : IRetriever
             .Select((idx, rank) =>
             {
                 var node = nodes[idx];
-                var text = $"{node.Path}\n\n{node.Body}";
-                var chunk = new DocumentChunk($"struct#{idx}", "structural", rank, text, 0, text.Length, meta);
+                var text = $"{node.Path}\n\n{node.Text}";
+                var chunk = new DocumentChunk(node.Id, "structural", rank, text, 0, text.Length, meta);
                 return new RetrievalResult(chunk, 1.0 / (rank + 1));
             })];
-    }
-}
-
-/// <summary>
-/// Tries the vectorless retriever first; if it returns nothing, falls back
-/// to the supplied dense / hybrid retriever.
-/// </summary>
-public sealed class StructuralVectorRetriever : IRetriever
-{
-    private readonly VectorlessRetriever _vectorless;
-    private readonly IRetriever _vectorFallback;
-
-    public StructuralVectorRetriever(VectorlessRetriever vectorless, IRetriever vectorFallback)
-    {
-        ArgumentNullException.ThrowIfNull(vectorless);
-        ArgumentNullException.ThrowIfNull(vectorFallback);
-        _vectorless = vectorless;
-        _vectorFallback = vectorFallback;
-    }
-
-    public string Strategy => $"structural-then-{_vectorFallback.Strategy}";
-
-    public async Task<IReadOnlyList<RetrievalResult>> RetrieveAsync(
-        string query, int topK, CancellationToken cancellationToken = default)
-    {
-        var hits = await _vectorless.RetrieveAsync(query, topK, cancellationToken).ConfigureAwait(false);
-        if (hits.Count > 0)
-        {
-            return hits;
-        }
-
-        return await _vectorFallback.RetrieveAsync(query, topK, cancellationToken).ConfigureAwait(false);
     }
 }
