@@ -1,3 +1,4 @@
+using Microsoft.Extensions.AI;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 using SmartDocs.Core.Tokens;
@@ -72,6 +73,73 @@ public sealed class RagPipelineTests
         Assert.Contains(events, e => e.Kind == RagStreamEventKind.Token);
     }
 
+    [Fact]
+    public async Task AskStreamingAsync_emits_error_event_when_generation_faults()
+    {
+        var retriever = new StubRetriever([
+            new RetrievalResult(Chunk("a", "alpha"), 0.9),
+        ]);
+        var promptEngine = new PromptTemplateEngine(new TokenCounter());
+        // Yields one token, then throws mid-stream.
+        var chat = new ThrowingChatClient(tokensBeforeThrow: 1);
+        var pipeline = new RagPipeline(retriever, promptEngine, chat);
+
+        var events = new List<RagStreamEvent>();
+        await foreach (var ev in pipeline.AskStreamingAsync("what is alpha?"))
+        {
+            events.Add(ev);
+        }
+
+        // Sources came first; the sequence ends on Error and there is no Done after it.
+        Assert.Equal(RagStreamEventKind.Sources, events[0].Kind);
+        Assert.Equal(RagStreamEventKind.Error, events[^1].Kind);
+        Assert.DoesNotContain(events, e => e.Kind == RagStreamEventKind.Done);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_emits_error_event_when_retrieval_faults()
+    {
+        var retriever = new ThrowingRetriever();
+        var promptEngine = new PromptTemplateEngine(new TokenCounter());
+        var chat = new StubChatClient(_ => "unreachable");
+        var pipeline = new RagPipeline(retriever, promptEngine, chat);
+
+        var events = new List<RagStreamEvent>();
+        await foreach (var ev in pipeline.AskStreamingAsync("what is alpha?"))
+        {
+            events.Add(ev);
+        }
+
+        // A retrieval fault is terminal before any Sources: the only event is Error.
+        var only = Assert.Single(events);
+        Assert.Equal(RagStreamEventKind.Error, only.Kind);
+        Assert.DoesNotContain(events, e => e.Kind == RagStreamEventKind.Sources);
+        Assert.DoesNotContain(events, e => e.Kind == RagStreamEventKind.Done);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_propagates_cancellation_without_error_event()
+    {
+        var retriever = new StubRetriever([
+            new RetrievalResult(Chunk("a", "alpha"), 0.9),
+        ]);
+        var promptEngine = new PromptTemplateEngine(new TokenCounter());
+        // Cancels the token while streaming so the OCE originates mid-pipeline.
+        var cts = new CancellationTokenSource();
+        var chat = new ThrowingChatClient(tokensBeforeThrow: 0, cancelOnStream: cts);
+        var pipeline = new RagPipeline(retriever, promptEngine, chat);
+
+        // Cancellation must NOT be swallowed into an Error event — it propagates,
+        // which is what lets the server stop billing when the browser disconnects.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        {
+            await foreach (var ev in pipeline.AskStreamingAsync("what is alpha?", cts.Token))
+            {
+                // drain
+            }
+        });
+    }
+
     private sealed class StubRetriever : IRetriever
     {
         private readonly IReadOnlyList<RetrievalResult> _hits;
@@ -79,5 +147,69 @@ public sealed class RagPipelineTests
         public string Strategy => "stub";
         public Task<IReadOnlyList<RetrievalResult>> RetrieveAsync(string q, int topK, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<RetrievalResult>>([.. _hits.Take(topK)]);
+    }
+
+    private sealed class ThrowingRetriever : IRetriever
+    {
+        public string Strategy => "throwing";
+        public Task<IReadOnlyList<RetrievalResult>> RetrieveAsync(string q, int topK, CancellationToken ct = default)
+            => throw new InvalidOperationException("retrieval backend is down");
+    }
+
+    /// <summary>
+    /// <see cref="IChatClient"/> whose streaming response yields a fixed number of
+    /// tokens and then faults. If a <see cref="CancellationTokenSource"/> is given,
+    /// it is cancelled instead of throwing, so the fault surfaces as an
+    /// <see cref="OperationCanceledException"/> via the pipeline's token check.
+    /// </summary>
+    private sealed class ThrowingChatClient : IChatClient
+    {
+        private readonly int _tokensBeforeThrow;
+        private readonly CancellationTokenSource? _cancelOnStream;
+
+        public ThrowingChatClient(int tokensBeforeThrow, CancellationTokenSource? cancelOnStream = null)
+        {
+            _tokensBeforeThrow = tokensBeforeThrow;
+            _cancelOnStream = cancelOnStream;
+        }
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("non-streaming path not used in these tests");
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+            => EnumerateAsync();
+
+        private async IAsyncEnumerable<ChatResponseUpdate> EnumerateAsync()
+        {
+            for (var i = 0; i < _tokensBeforeThrow; i++)
+            {
+                await Task.Yield();
+                yield return new ChatResponseUpdate(ChatRole.Assistant, $"tok{i} ");
+            }
+
+            await Task.Yield();
+            if (_cancelOnStream is not null)
+            {
+                // Trip the pipeline's ThrowIfCancellationRequested so an OCE
+                // propagates rather than becoming an Error event.
+                _cancelOnStream.Cancel();
+                yield return new ChatResponseUpdate(ChatRole.Assistant, "after-cancel");
+            }
+            else
+            {
+                throw new InvalidOperationException("generation backend faulted mid-stream");
+            }
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null)
+            => serviceKey is null && serviceType.IsInstanceOfType(this) ? this : null;
+
+        public void Dispose() { }
     }
 }

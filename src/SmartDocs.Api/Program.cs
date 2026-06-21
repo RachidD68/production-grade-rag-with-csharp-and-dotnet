@@ -134,6 +134,7 @@ static async IAsyncEnumerable<SseItem<string>> StreamSseAsync(
                 System.Text.Json.JsonSerializer.Serialize(ev.Sources?.Select(s => s.Chunk.ChunkId).ToArray() ?? []),
                 "sources"),
             RagStreamEventKind.Token => new SseItem<string>(ev.Token ?? "", "token"),
+            RagStreamEventKind.Error => new SseItem<string>(ev.Token ?? "", "error"),
             RagStreamEventKind.Done => new SseItem<string>("", "done"),
             _ => new SseItem<string>("", "unknown"),
         };

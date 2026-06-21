@@ -18,7 +18,7 @@ public sealed record RagStreamEvent(
     string? Token = null,
     IReadOnlyList<RetrievalResult>? Sources = null);
 
-public enum RagStreamEventKind { Sources, Token, Done }
+public enum RagStreamEventKind { Sources, Token, Done, Error }
 
 /// <summary>
 /// End-to-end retrieval-augmented-generation orchestrator.
@@ -28,6 +28,11 @@ public enum RagStreamEventKind { Sources, Token, Done }
 /// </summary>
 public sealed class RagPipeline
 {
+    // Generic, non-leaking message put on the wire when a stage faults. The
+    // real exception is never surfaced to the browser (it could echo a poisoned
+    // chunk or internal detail); callers should log it server-side instead.
+    private const string StreamFailedMessage = "The answer could not be generated. Please try again.";
+
     private readonly IRetriever _retriever;
     private readonly PromptTemplateEngine _promptEngine;
     private readonly IChatClient _chat;
@@ -63,21 +68,87 @@ public sealed class RagPipeline
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
-        var retrieved = await _retriever.RetrieveAsync(question, TopK, cancellationToken).ConfigureAwait(false);
-        var (prompt, used) = _promptEngine.Build(question, retrieved);
+
+        // Stage 1+2 — retrieve and augment. A fault here is terminal: surface a
+        // single Error event so the client renders a failure state instead of
+        // hanging. Cancellation (the browser closed the SSE stream) is NOT an
+        // error — it propagates so the in-flight work, and its billing, stop.
+        string prompt;
+        IReadOnlyList<RetrievalResult> used;
+        var prepFailed = false;
+        try
+        {
+            var retrieved = await _retriever.RetrieveAsync(question, TopK, cancellationToken).ConfigureAwait(false);
+            (prompt, used) = _promptEngine.Build(question, retrieved);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            prompt = string.Empty;
+            used = Array.Empty<RetrievalResult>();
+            prepFailed = true;
+        }
+
+        if (prepFailed)
+        {
+            yield return new RagStreamEvent(RagStreamEventKind.Error, Token: StreamFailedMessage);
+            yield break;
+        }
 
         // 1) Sources first so the UI can render citations before the first token.
         yield return new RagStreamEvent(RagStreamEventKind.Sources, Sources: used);
 
-        await foreach (var update in _chat.GetStreamingResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false))
+        // Stage 3 — generate. Drive the stream through a manual enumerator so a
+        // mid-stream fault becomes a clean Error event rather than a raw
+        // exception torn through the SSE writer. (You cannot `yield` inside a
+        // `catch`, hence the try/catch around MoveNextAsync with the yield outside.)
+        var stream = _chat.GetStreamingResponseAsync(prompt, cancellationToken: cancellationToken);
+        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+        await using (enumerator.ConfigureAwait(false))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var text = update.Text;
-            if (!string.IsNullOrEmpty(text))
+            while (true)
             {
-                yield return new RagStreamEvent(RagStreamEventKind.Token, Token: text);
+                RagStreamEvent? tokenEvent;
+                var faulted = false;
+                try
+                {
+                    if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                    {
+                        break;
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var text = enumerator.Current.Text;
+                    tokenEvent = string.IsNullOrEmpty(text)
+                        ? null
+                        : new RagStreamEvent(RagStreamEventKind.Token, Token: text);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    tokenEvent = null;
+                    faulted = true;
+                }
+
+                // yield lives outside the catch — CS1631 forbids it inside one.
+                if (faulted)
+                {
+                    yield return new RagStreamEvent(RagStreamEventKind.Error, Token: StreamFailedMessage);
+                    yield break;
+                }
+
+                if (tokenEvent is not null)
+                {
+                    yield return tokenEvent;
+                }
             }
         }
+
         yield return new RagStreamEvent(RagStreamEventKind.Done);
     }
 }

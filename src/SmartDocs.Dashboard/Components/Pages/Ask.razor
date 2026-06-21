@@ -1,0 +1,133 @@
+@page "/ask"
+@rendermode InteractiveServer
+@using System.Net.ServerSentEvents
+@using System.Net.Http.Json
+@using System.Text.Json
+@implements IDisposable
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Ask</PageTitle>
+
+<h1>Ask</h1>
+
+<p>Ask a grounded question. The answer streams back token-by-token, with the
+retrieved chunk IDs shown as citation chips below it.</p>
+
+<div class="mb-3">
+    <textarea class="form-control" rows="3" placeholder="e.g. How many vacation days do I get?"
+              @bind="_question" @bind:event="oninput" disabled="@_streaming"></textarea>
+</div>
+
+<button class="btn btn-primary" @onclick="AskAsync"
+        disabled="@(_streaming || string.IsNullOrWhiteSpace(_question))">
+    @(_streaming ? "Asking…" : "Ask")
+</button>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @_error
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_answer) || _streaming)
+{
+    <div class="card mt-3">
+        <div class="card-body">
+            <div style="white-space: pre-wrap;">@_answer</div>
+        </div>
+    </div>
+}
+
+@if (_sourceIds.Length > 0)
+{
+    <div class="mt-3">
+        <strong>Sources:</strong>
+        @foreach (var id in _sourceIds)
+        {
+            <span class="badge bg-secondary me-1">@id</span>
+        }
+    </div>
+}
+
+@code {
+    private string _question = "";
+    private string _answer = "";
+    private string[] _sourceIds = Array.Empty<string>();
+    private string? _error;
+    private bool _streaming;
+    private CancellationTokenSource? _cts;
+
+    private async Task AskAsync()
+    {
+        if (_streaming || string.IsNullOrWhiteSpace(_question))
+        {
+            return;
+        }
+
+        _streaming = true;
+        _answer = "";
+        _sourceIds = Array.Empty<string>();
+        _error = null;
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            var http = HttpClientFactory.CreateClient("SmartDocsApi");
+            using var req = new HttpRequestMessage(HttpMethod.Post, "api/ask/stream")
+            {
+                Content = JsonContent.Create(new { question = _question }),
+            };
+
+            // ResponseHeadersRead is REQUIRED: it lets us read the SSE body
+            // incrementally instead of buffering the whole response, so tokens
+            // appear live as the server emits them.
+            using var resp = await http.SendAsync(
+                req, HttpCompletionOption.ResponseHeadersRead, _cts.Token);
+            resp.EnsureSuccessStatusCode();
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(_cts.Token);
+            var parser = SseParser.Create(stream);
+            await foreach (SseItem<string> item in parser.EnumerateAsync(_cts.Token))
+            {
+                switch (item.EventType)
+                {
+                    case "sources":
+                        _sourceIds = JsonSerializer.Deserialize<string[]>(item.Data) ?? Array.Empty<string>();
+                        break;
+                    case "token":
+                        _answer += item.Data;
+                        break;
+                    case "error":
+                        _error = item.Data;
+                        break;
+                    case "done":
+                        break;
+                    default:
+                        break;
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The user navigated away or the request was cancelled — not an error.
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _streaming = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}
