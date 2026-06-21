@@ -118,6 +118,41 @@ public sealed class ChunkerTests
         Assert.Single(chunks);
     }
 
+    [Fact]
+    public async Task CodeFileChunker_prepends_namespace_and_containing_type_to_method_chunks()
+    {
+        var chunker = new CodeFileChunker();
+        var meta = Meta();
+        var doc = new Document(meta,
+            """
+            using System;
+            using System.Text;
+
+            namespace SmartDocs.Sample.Math;
+
+            public class Calculator
+            {
+                public int Add(int a, int b) => a + b;
+            }
+            """,
+            "src/Calculator.cs");
+
+        var chunks = await ToListAsync(chunker.ChunkAsync(doc));
+
+        // The method chunk (the one whose body holds the Add signature) must be
+        // self-describing: it names its namespace and the containing class even
+        // though the method body alone would not.
+        var methodChunk = chunks.Single(c =>
+            c.Text.Contains("=> a + b", StringComparison.Ordinal) &&
+            !c.Text.Contains("class Calculator\n{", StringComparison.Ordinal));
+
+        Assert.Contains("namespace SmartDocs.Sample.Math;", methodChunk.Text, StringComparison.Ordinal);
+        Assert.Contains("class Calculator", methodChunk.Text, StringComparison.Ordinal);
+        Assert.Contains("using System;", methodChunk.Text, StringComparison.Ordinal);
+        // Offsets still reference the original member span, not the augmented text.
+        Assert.True(methodChunk.EndCharOffset <= doc.Content.Length);
+    }
+
     private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source)
     {
         var list = new List<T>();
