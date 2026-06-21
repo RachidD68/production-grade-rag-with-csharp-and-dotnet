@@ -9,11 +9,11 @@ namespace SmartDocs.Agents;
 /// configured with the SmartDocs retrieval tools (vector + graph + web).
 /// The agent autonomously decides which tool(s) to call per query.
 ///
-/// At MAF 1.6.1 this surface also supports a <see cref="ChunkInjectorOptions"/>
+/// On MAF 1.10.0 this surface also provides a <see cref="ChunkInjectorOptions"/>
 /// hook that pre-injects retrieved chunks into the agent's session before the
-/// first user turn — mirroring the spirit of the new
+/// first user turn — mirroring the spirit of MAF's
 /// <c>IChatMessageInjector</c> abstraction without coupling to its
-/// experimental surface. Useful when the application already has a
+/// still-evolving surface. Useful when the application already has a
 /// retrieval pipeline upstream and wants the agent's first message to start
 /// with grounded context rather than discovering it via tool calls.
 /// </summary>
@@ -60,7 +60,7 @@ public static class SmartDocsAgent
     /// chunks as already-known context and can still call its own tools if
     /// the preamble proves insufficient.
     ///
-    /// This is the .NET-side equivalent of the MAF 1.6.1
+    /// This is the .NET-side equivalent of MAF's
     /// <c>IChatMessageInjector</c> hook for RAG workflows where retrieval is
     /// upstream of the agent rather than discovered by it. See Ch 15.
     /// </summary>
@@ -133,7 +133,7 @@ public static class SmartDocsAgent
 
 /// <summary>
 /// Options for <see cref="SmartDocsAgent.RunWithInjectedChunksAsync"/>.
-/// Pairs a retriever with the top-K count for chunk pre-injection (MAF 1.6.1
+/// Pairs a retriever with the top-K count for chunk pre-injection (MAF
 /// <c>IChatMessageInjector</c> spirit; see Ch 15).
 /// </summary>
 public sealed record ChunkInjectorOptions(IRetriever Retriever, int TopK = 5)

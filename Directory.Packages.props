@@ -14,65 +14,70 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.8.0 stable (June 2026)">
+  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.10.0 stable (June 2026)">
     <!--
       Stable release line. Pin to the exact patch version below; the project
       bumps deliberately, not by floating on a range. Verify against the
       release notes when upgrading.
-      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.8.0
-      Bump rationale: docs/decisions/0010-maf-1.8.0-upgrade.md
+      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.10.0
+      Bump rationale: docs/decisions/0011-maf-1.10.0-and-revision-pass.md
     -->
-    <PackageVersion Include="Microsoft.Agents.AI" Version="1.8.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.8.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.8.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.8.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.8.0" />
-    <!-- OpenTelemetry wrapper auto-wires the underlying IChatClient with
-         OpenTelemetryChatClient (breaking change carried over from 1.3.0:
-         do NOT manually wrap when this package is referenced — double-wrap
-         produces duplicate spans). See docs/decisions/0010-maf-1.8.0-upgrade.md. -->
-    <PackageVersion Include="Microsoft.Agents.AI.OpenTelemetry" Version="1.8.0" />
-    <!-- A2A remains preview at the 1.8.0 milestone — see ADR-0010. -->
-    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.8.0-preview.260528.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.8.0-preview.260528.1" />
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.10.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.10.0" />
+    <!-- Azure AI Foundry integration. This sub-package never left preview
+         (GA stops at 1.5.0); track the matching 1.10.0 preview so the Ch 6/14
+         Foundry samples resolve a real version if enabled. No project
+         references it today — the pin is here to keep the version coherent. -->
+    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.10.0-preview.260610.1" />
+    <!-- A2A remains preview at the 1.10.0 milestone — see ADR-0011. -->
+    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.10.0-preview.260610.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.10.0-preview.260610.1" />
+    <!-- NOTE: there is NO standalone Microsoft.Agents.AI.OpenTelemetry package
+         on NuGet (the prior 1.8.0 pin referenced a non-existent id and only
+         survived because no project consumed it). MAF agent telemetry comes
+         from Microsoft.Agents.AI core + Microsoft.Extensions.AI's
+         OpenTelemetryChatClient, exported via the OpenTelemetry.* packages
+         below. Do NOT re-add a Microsoft.Agents.AI.OpenTelemetry pin. -->
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.AI — unified IChatClient / IEmbeddingGenerator">
-    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.5.1" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.5.1" />
-    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.1" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
   </ItemGroup>
 
   <ItemGroup Label="LLM provider SDKs">
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
-    <PackageVersion Include="OpenAI" Version="2.10.0" />
+    <PackageVersion Include="OpenAI" Version="2.11.0" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.VectorData — abstractions GA, connectors preview">
-    <PackageVersion Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.7.0" />
     <!-- Connectors are pinned in the projects that consume them (Phase 2, Ch 6). -->
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.* — hosting, configuration, DI, resilience">
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
-    <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.5.0" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup Label="Roslyn (used by CodeFileChunker in Ch 4)">
@@ -92,13 +97,13 @@
     <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
     <!-- Pin the patched Microsoft.Bcl.Memory transitive: M.ML.Tokenizers 2.0.0
          pulls 9.0.4 which has GHSA-73j8-2gch-69rq (high severity). -->
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.9" />
     <PackageVersion Include="OllamaSharp" Version="5.4.25" />
   </ItemGroup>
 
   <ItemGroup Label="Vector and graph databases">
     <PackageVersion Include="Qdrant.Client" Version="1.17.0" />
-    <PackageVersion Include="Neo4j.Driver" Version="6.0.0" />
+    <PackageVersion Include="Neo4j.Driver" Version="6.1.2" />
   </ItemGroup>
 
   <ItemGroup Label="Resilience">
@@ -117,8 +122,8 @@
   </ItemGroup>
 
   <ItemGroup Label="Model Context Protocol (MCP)">
-    <PackageVersion Include="ModelContextProtocol" Version="1.2.0" />
-    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.2.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup Label="CLI tooling">
@@ -126,8 +131,8 @@
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core 10 — first-class OpenAPI 3.1 (no Swashbuckle needed)">
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
