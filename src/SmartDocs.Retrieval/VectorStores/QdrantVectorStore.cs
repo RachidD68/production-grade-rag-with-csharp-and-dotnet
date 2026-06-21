@@ -3,6 +3,8 @@ using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Filtering;
+using SmartDocs.Retrieval.Filtering;
 
 namespace SmartDocs.Retrieval.VectorStores;
 
@@ -108,12 +110,23 @@ public sealed class QdrantVectorStore : IVectorStore
     public async Task<IReadOnlyList<RetrievalResult>> SearchAsync(
         ReadOnlyMemory<float> queryVector,
         int topK,
+        MetadataFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
+
+        // True pre-filter: when a MetadataFilter is supplied, compile it to a
+        // native Qdrant gRPC Filter so the candidate set is narrowed inside the
+        // engine before scoring. null => no filter (match all). Correct by
+        // construction via QdrantFilterCompiler; exercised against a live Qdrant
+        // in the integration suite (see QdrantVectorStoreTests), not in CI unit
+        // tests, since it needs a running container.
+        var grpcFilter = filter is null ? null : QdrantFilterCompiler.ToGrpcFilter(filter);
+
         var hits = await _client.SearchAsync(
             CollectionName,
             queryVector.ToArray(),
+            filter: grpcFilter,
             limit: (ulong)topK,
             payloadSelector: true,
             cancellationToken: cancellationToken).ConfigureAwait(false);

@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using SmartDocs.Core.Documents;
 
-namespace SmartDocs.Routing.Filtering;
+namespace SmartDocs.Core.Filtering;
 
 /// <summary>
 /// Lightweight metadata filter — wraps an
@@ -10,8 +10,16 @@ namespace SmartDocs.Routing.Filtering;
 /// and adapter code can compile them to provider-specific filter languages
 /// (Qdrant filter JSON, Azure AI Search OData, pgvector WHERE).
 /// </summary>
+/// <remarks>
+/// Lives in <c>SmartDocs.Core</c> (not <c>SmartDocs.Routing</c>) so that the
+/// <see cref="SmartDocs.Core.Abstractions.IVectorStore"/> port and every
+/// adapter can take a pre-filter without a Core → Routing dependency. The
+/// LLM-driven <c>QueryConstructor</c> that <em>produces</em> filters stays in
+/// Routing; only the value type that travels into the store lives here.
+/// </remarks>
 public sealed class MetadataFilter
 {
+    /// <summary>The underlying predicate expression, the source for compilation to a store's native filter language.</summary>
     public Expression<Func<DocumentMetadata, bool>> Predicate { get; }
     private readonly Func<DocumentMetadata, bool> _compiled;
 
@@ -44,6 +52,17 @@ public sealed class MetadataFilter
         ArgumentNullException.ThrowIfNull(other);
         var p = Expression.Parameter(typeof(DocumentMetadata));
         var combined = Expression.AndAlso(
+            Expression.Invoke(Predicate, p),
+            Expression.Invoke(other.Predicate, p));
+        return new MetadataFilter(Expression.Lambda<Func<DocumentMetadata, bool>>(combined, p));
+    }
+
+    /// <summary>Logical OR of two filters.</summary>
+    public MetadataFilter Or(MetadataFilter other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        var p = Expression.Parameter(typeof(DocumentMetadata));
+        var combined = Expression.OrElse(
             Expression.Invoke(Predicate, p),
             Expression.Invoke(other.Predicate, p));
         return new MetadataFilter(Expression.Lambda<Func<DocumentMetadata, bool>>(combined, p));

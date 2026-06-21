@@ -8,6 +8,8 @@ using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Filtering;
+using SmartDocs.Retrieval.Filtering;
 
 namespace SmartDocs.Retrieval.VectorStores;
 
@@ -116,20 +118,31 @@ public sealed class AzureAiSearchVectorStore : IVectorStore
     public async Task<IReadOnlyList<RetrievalResult>> SearchAsync(
         ReadOnlyMemory<float> queryVector,
         int topK,
+        MetadataFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
 
+        // Prefer a true pre-filter: translate the MetadataFilter into an OData
+        // $filter that Azure AI Search evaluates server-side over the filterable
+        // fields. If the expression uses a node the OData translator does not
+        // cover, fall back to in-process post-filtering on filter.Matches.
+        var odata = filter is null ? null : AzureSearchFilterCompiler.TryCompile(filter);
+        var usePostFilter = filter is not null && odata is null;
+
         var options = new SearchOptions
         {
-            Size = topK,
+            // When post-filtering we over-fetch so the in-process pass can still
+            // yield up to topK after dropping non-matching hits.
+            Size = usePostFilter ? topK * 4 : topK,
+            Filter = odata,
             VectorSearch = new VectorSearchOptions
             {
                 Queries =
                 {
                     new VectorizedQuery(queryVector)
                     {
-                        KNearestNeighborsCount = topK,
+                        KNearestNeighborsCount = usePostFilter ? topK * 4 : topK,
                         Fields = { VectorFieldName },
                     },
                 },
@@ -144,7 +157,17 @@ public sealed class AzureAiSearchVectorStore : IVectorStore
         var results = new List<RetrievalResult>(topK);
         await foreach (var hit in response.Value.GetResultsAsync().ConfigureAwait(false))
         {
-            results.Add(new RetrievalResult(BuildChunk(hit.Document), hit.Score ?? 0d));
+            var chunk = BuildChunk(hit.Document);
+            // post-filter fallback: only when the OData translation was impractical.
+            if (usePostFilter && !filter!.Matches(chunk.Metadata))
+            {
+                continue;
+            }
+            results.Add(new RetrievalResult(chunk, hit.Score ?? 0d));
+            if (results.Count >= topK)
+            {
+                break;
+            }
         }
         return results;
     }

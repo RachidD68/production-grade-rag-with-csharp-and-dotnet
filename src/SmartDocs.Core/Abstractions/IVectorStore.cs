@@ -1,4 +1,5 @@
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Filtering;
 
 namespace SmartDocs.Core.Abstractions;
 
@@ -28,9 +29,20 @@ public interface IVectorStore
     /// per the underlying store's configuration; see Ch 3 for the distance-metric
     /// trade-offs.
     /// </summary>
+    /// <param name="queryVector">The query embedding to rank candidates against.</param>
+    /// <param name="topK">Maximum number of results to return.</param>
+    /// <param name="filter">
+    /// Optional metadata pre-filter (Chapter 11). When non-null, the store
+    /// restricts the candidate set to chunks whose <see cref="DocumentMetadata"/>
+    /// satisfies the filter <em>before</em> ranking — a true pre-filter, not a
+    /// post-filter — so the top-K is drawn from the matching subset.
+    /// <see langword="null"/> (the default) matches all chunks.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the search.</param>
     Task<IReadOnlyList<RetrievalResult>> SearchAsync(
         ReadOnlyMemory<float> queryVector,
         int topK,
+        MetadataFilter? filter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Delete the chunks with the given <paramref name="chunkIds"/>.</summary>

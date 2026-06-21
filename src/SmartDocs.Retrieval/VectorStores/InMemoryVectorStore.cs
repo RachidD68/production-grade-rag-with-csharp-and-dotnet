@@ -1,5 +1,6 @@
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Filtering;
 
 namespace SmartDocs.Retrieval.VectorStores;
 
@@ -53,13 +54,18 @@ public sealed class InMemoryVectorStore : IVectorStore
     public Task<IReadOnlyList<RetrievalResult>> SearchAsync(
         ReadOnlyMemory<float> queryVector,
         int topK,
+        MetadataFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
         EmbeddedChunk[] snapshot;
         lock (_lock) { snapshot = [.. _chunks]; }
 
+        // True pre-filter: restrict the candidate set to chunks whose metadata
+        // satisfies the filter BEFORE ranking, so the top-K is drawn from the
+        // matching subset (not a post-filter that could leave fewer than K).
         var ranked = snapshot
+            .Where(c => filter is null || filter.Matches(c.Chunk.Metadata))
             .Select(c => new RetrievalResult(c.Chunk, Cosine(queryVector.Span, c.Vector.Span)))
             .OrderByDescending(r => r.Score)
             .Take(topK)

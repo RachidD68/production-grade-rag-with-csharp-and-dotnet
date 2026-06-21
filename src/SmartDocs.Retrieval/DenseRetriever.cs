@@ -35,6 +35,6 @@ public sealed class DenseRetriever : IRetriever
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
 
         var queryVec = await _embeddings.EmbedQueryAsync(query, cancellationToken).ConfigureAwait(false);
-        return await _store.SearchAsync(queryVec, topK, cancellationToken).ConfigureAwait(false);
+        return await _store.SearchAsync(queryVec, topK, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

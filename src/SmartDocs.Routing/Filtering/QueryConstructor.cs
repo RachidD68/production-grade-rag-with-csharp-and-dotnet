@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
+using SmartDocs.Core.Filtering;
 
 namespace SmartDocs.Routing.Filtering;
 
