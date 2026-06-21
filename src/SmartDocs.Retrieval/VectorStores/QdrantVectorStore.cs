@@ -22,12 +22,25 @@ public sealed class QdrantVectorStore : IVectorStore
     private readonly QdrantClient _client;
     private readonly int _vectorSize;
     private readonly Distance _distance;
+    private readonly bool _useScalarQuantization;
 
+    /// <param name="client">An initialised Qdrant gRPC client (default port 6334).</param>
+    /// <param name="collectionName">The Qdrant collection backing this store.</param>
+    /// <param name="vectorSize">Embedding dimensionality. Must match the model used at index time.</param>
+    /// <param name="distance">Similarity metric, fixed at collection-creation time.</param>
+    /// <param name="useScalarQuantization">
+    /// When <see langword="true"/>, the collection is created with int8 scalar
+    /// quantization (<c>quantization_config</c>) — roughly 4x smaller vectors at
+    /// ~99% recall, kept in RAM for fast rescoring. Off by default so the
+    /// baseline collection layout is byte-for-byte unchanged; opt in per the
+    /// recall/memory trade-off discussed in Chapter 6.
+    /// </param>
     public QdrantVectorStore(
         QdrantClient client,
         string collectionName,
         int vectorSize,
-        Distance distance = Distance.Cosine)
+        Distance distance = Distance.Cosine,
+        bool useScalarQuantization = false)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(collectionName);
@@ -37,6 +50,7 @@ public sealed class QdrantVectorStore : IVectorStore
         CollectionName = collectionName;
         _vectorSize = vectorSize;
         _distance = distance;
+        _useScalarQuantization = useScalarQuantization;
     }
 
     public string CollectionName { get; }
@@ -50,8 +64,34 @@ public sealed class QdrantVectorStore : IVectorStore
         }
         await _client.CreateCollectionAsync(
             CollectionName,
-            new VectorParams { Size = (ulong)_vectorSize, Distance = _distance },
+            BuildVectorParams(_vectorSize, _distance, _useScalarQuantization),
             cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Builds the <see cref="VectorParams"/> for collection creation. Extracted
+    /// so the quantization wiring is unit-testable without a live Qdrant.
+    /// When <paramref name="useScalarQuantization"/> is on, an int8
+    /// <c>ScalarQuantization</c> config is attached; otherwise the params are
+    /// the bare <c>Size</c>/<c>Distance</c> baseline.
+    /// </summary>
+    internal static VectorParams BuildVectorParams(int vectorSize, Distance distance, bool useScalarQuantization)
+    {
+        var vectorParams = new VectorParams { Size = (ulong)vectorSize, Distance = distance };
+        if (useScalarQuantization)
+        {
+            vectorParams.QuantizationConfig = new QuantizationConfig
+            {
+                Scalar = new ScalarQuantization
+                {
+                    Type = QuantizationType.Int8,
+                    // Keep quantized vectors in RAM so rescoring stays fast — the
+                    // memory-fit win that makes quantization worthwhile (Ch 6 §RAM).
+                    AlwaysRam = true,
+                },
+            };
+        }
+        return vectorParams;
     }
 
     public async Task UpsertAsync(IEnumerable<EmbeddedChunk> chunks, CancellationToken cancellationToken = default)

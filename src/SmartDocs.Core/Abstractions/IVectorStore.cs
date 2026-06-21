@@ -24,8 +24,9 @@ public interface IVectorStore
     /// <summary>
     /// Search for the <paramref name="topK"/> chunks whose vectors are most
     /// similar to <paramref name="queryVector"/>. The semantic of "most similar"
-    /// (cosine, dot product, Manhattan) is fixed at collection-creation time
-    /// per the underlying store's configuration; see Ch 6 for the trade-offs.
+    /// (cosine, dot product, Euclidean) is fixed at collection-creation time
+    /// per the underlying store's configuration; see Ch 3 for the distance-metric
+    /// trade-offs.
     /// </summary>
     Task<IReadOnlyList<RetrievalResult>> SearchAsync(
         ReadOnlyMemory<float> queryVector,

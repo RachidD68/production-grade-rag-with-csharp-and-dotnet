@@ -7,12 +7,22 @@
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Qdrant.Client" />
+    <PackageReference Include="Azure.Search.Documents" />
     <PackageReference Include="Neo4j.Driver" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SmartDocs.Core\SmartDocs.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the unit tests assert on the internal index/collection builders
+         (BuildVectorParams, BuildIndex, ToSearchDocument, ...) without a live
+         Qdrant or Azure AI Search service. -->
+    <InternalsVisibleTo Include="SmartDocs.UnitTests" />
   </ItemGroup>
 
 </Project>
