@@ -5,7 +5,7 @@ using SmartDocs.Core.Documents;
 namespace SmartDocs.Retrieval.Graph;
 
 /// <summary>
-/// LazyGraphRAG (Microsoft Research, late 2025) — defers all summarisation
+/// LazyGraphRAG (Microsoft Research, November 2024) — defers all summarisation
 /// to query time. At index time we only build the bare graph (entities +
 /// relations + chunk-text mapping). At query time we:
 ///   1. extract query entities
@@ -13,16 +13,35 @@ namespace SmartDocs.Retrieval.Graph;
 ///   3. ask the chat model to summarise just that subgraph
 ///
 /// Result: ~0.1% of full-GraphRAG indexing cost; query cost rises a bit
-/// because summarisation is now per-query.
+/// because summarisation is now per-query. Supplying an
+/// <see cref="ISummaryCache"/> makes that per-query cost real but bounded:
+/// queries that resolve to a subgraph already summarised reuse the cached
+/// summary and skip the LLM call entirely.
 /// </summary>
 public sealed class LazyGraphRagRetriever : IRetriever
 {
     private readonly EntityExtractor _extractor;
     private readonly IGraphStore _graph;
     private readonly IChatClient _chat;
+    private readonly ISummaryCache? _cache;
     public int MaxHops { get; }
 
-    public LazyGraphRagRetriever(EntityExtractor extractor, IGraphStore graph, IChatClient chat, int maxHops = 2)
+    /// <summary>Create the retriever.</summary>
+    /// <param name="extractor">Extracts the query's seed entities.</param>
+    /// <param name="graph">The graph store traversed to assemble the subgraph.</param>
+    /// <param name="chat">The chat client used to summarise the subgraph at query time.</param>
+    /// <param name="maxHops">Traversal radius from the seed entities (default 2).</param>
+    /// <param name="cache">
+    /// Optional per-subgraph summary cache. When supplied, an identical subgraph
+    /// served a second time reuses the cached summary and skips the LLM call;
+    /// when <see langword="null"/>, every query is summarised afresh.
+    /// </param>
+    public LazyGraphRagRetriever(
+        EntityExtractor extractor,
+        IGraphStore graph,
+        IChatClient chat,
+        int maxHops = 2,
+        ISummaryCache? cache = null)
     {
         ArgumentNullException.ThrowIfNull(extractor);
         ArgumentNullException.ThrowIfNull(graph);
@@ -32,6 +51,7 @@ public sealed class LazyGraphRagRetriever : IRetriever
         _graph = graph;
         _chat = chat;
         MaxHops = maxHops;
+        _cache = cache;
     }
 
     public string Strategy => "lazy-graph-rag";
@@ -60,6 +80,19 @@ public sealed class LazyGraphRagRetriever : IRetriever
             return Array.Empty<RetrievalResult>();
         }
 
+        // The cache key is the set of subgraph entity ids — two different
+        // natural-language queries that traverse to the same entities share one
+        // summary. On a hit we skip the (expensive) summarisation LLM call.
+        var subgraphIds = subgraph.Select(e => e.Id).ToList();
+        if (_cache is not null)
+        {
+            var cached = await _cache.TryGetAsync(subgraphIds, cancellationToken).ConfigureAwait(false);
+            if (cached is not null)
+            {
+                return [BuildResult(cached)];
+            }
+        }
+
         // Per-query summarisation (the "Lazy" part — no precomputed summaries).
         var subgraphText = string.Join("\n",
             subgraph.Select(e => $"- {e.Type}: {e.Name}" +
@@ -73,10 +106,20 @@ public sealed class LazyGraphRagRetriever : IRetriever
         var response = await _chat.GetResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
         var summary = (response.Text ?? string.Empty).Trim();
 
+        if (_cache is not null)
+        {
+            await _cache.SetAsync(subgraphIds, summary, cancellationToken).ConfigureAwait(false);
+        }
+
+        return [BuildResult(summary)];
+    }
+
+    private static RetrievalResult BuildResult(string summary)
+    {
         var meta = new DocumentMetadata("lazy-graph", "graph", "Graph", "All",
             "Internal", "GraphSummary", 2026, "lazy-graph-rag",
             new DateOnly(2026, 1, 1), "LazyGraphRAG subgraph summary");
         var chunk = new DocumentChunk("lazy-graph#0", "lazy-graph", 0, summary, 0, summary.Length, meta);
-        return [new RetrievalResult(chunk, 1.0)];
+        return new RetrievalResult(chunk, 1.0);
     }
 }

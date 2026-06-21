@@ -1,235 +1,167 @@
-// Chapter 17 — Lazy GraphRAG Demo.
+// Chapter 17 — LazyGraphRAG Demo.
 //
-// Demonstrates lazy vs eager GraphRAG using an in-memory knowledge graph.
-// No Neo4j required. Builds a small graph (10 entities, 15 relationships),
-// detects communities via connected components, then compares the token
-// cost of eagerly summarizing all communities upfront vs lazily summarizing
-// only on demand with caching.
+// Demonstrates LazyGraphRAG end-to-end against the real library types
+// (SmartDocs.Retrieval.Graph.LazyGraphRagRetriever + InMemorySummaryCache),
+// fully offline — no Neo4j, no API key. A deterministic stub IChatClient stands
+// in for the summarisation LLM and counts how many times it is actually called,
+// and a tiny in-memory IGraphStore returns the subgraph for "Acme".
+//
+// The point of the chapter: LazyGraphRAG defers summarisation to query time, and
+// an ISummaryCache makes that per-query cost bounded. We run the SAME query
+// twice; the second run resolves to the same subgraph, hits the cache, and skips
+// the LLM call entirely. The console prints cache Hits / Misses and the LLM call
+// count so the economics are visible, not asserted.
 //
 // Run:
 //   dotnet run --project samples/Ch17_LazyGraphRagDemo
 
-// --- Build the knowledge graph ---
+using Microsoft.Extensions.AI;
+using SmartDocs.Retrieval.Graph;
 
-var nodes = new List<GraphNode>
-{
-    new("azure-openai", "Azure OpenAI", "Microsoft's hosted OpenAI service for enterprise AI"),
-    new("embeddings", "Embeddings", "Dense vector representations of text for semantic search"),
-    new("qdrant", "Qdrant", "Open-source vector database for similarity search"),
-    new("rag", "RAG", "Retrieval-Augmented Generation pattern"),
-    new("chunking", "Chunking", "Splitting documents into smaller retrievable units"),
-    new("reranking", "Reranking", "Re-scoring retrieved results for relevance"),
-    new("llm", "LLM", "Large Language Model for text generation"),
-    new("prompt", "Prompt Engineering", "Crafting effective prompts for LLMs"),
-    new("eval", "Evaluation", "Measuring RAG system quality with ground truth"),
-    new("guardrails", "Guardrails", "Safety mechanisms preventing harmful outputs"),
-};
-
-var edges = new List<GraphEdge>
-{
-    new("azure-openai", "embeddings", "provides"),
-    new("azure-openai", "llm", "hosts"),
-    new("embeddings", "qdrant", "stored_in"),
-    new("embeddings", "chunking", "requires"),
-    new("rag", "embeddings", "uses"),
-    new("rag", "llm", "generates_with"),
-    new("rag", "reranking", "improves_with"),
-    new("rag", "chunking", "depends_on"),
-    new("chunking", "qdrant", "indexes_into"),
-    new("reranking", "qdrant", "queries"),
-    new("llm", "prompt", "configured_by"),
-    new("llm", "guardrails", "constrained_by"),
-    new("eval", "rag", "measures"),
-    new("eval", "guardrails", "validates"),
-    new("prompt", "rag", "shapes"),
-};
-
-Console.WriteLine("=== Ch17: Lazy vs Eager GraphRAG ===");
-Console.WriteLine();
-Console.WriteLine($"Knowledge graph: {nodes.Count} entities, {edges.Count} relationships");
+Console.WriteLine("=== Ch17: LazyGraphRAG — query-time summaries with caching ===");
 Console.WriteLine();
 
-// --- Community detection (connected components via BFS) ---
+// --- The in-memory knowledge graph (no Neo4j). ---
+// A small subgraph about a client "Acme" and its contract.
+var graph = new InMemoryGraph();
+graph.Add(new GraphEntity("acme", "Client", "Acme",
+    new Dictionary<string, string> { ["industry"] = "manufacturing" }));
+graph.Add(new GraphEntity("msa-2026", "Contract", "MSA 2026",
+    new Dictionary<string, string> { ["counterparty"] = "Acme", ["value"] = "1.2M" }));
+graph.Add(new GraphEntity("paris-office", "Office", "Paris",
+    new Dictionary<string, string> { ["serves"] = "Acme" }));
 
-var communities = DetectCommunities(nodes, edges);
-Console.WriteLine($"Detected {communities.Count} communities:");
-foreach (var community in communities)
-{
-    var memberLabels = community.MemberIds
-        .Select(id => nodes.First(n => n.Id == id).Label);
-    Console.WriteLine($"  [{community.Id}] Members: {string.Join(", ", memberLabels)}");
-}
-
+Console.WriteLine($"Knowledge graph: {graph.Count} entities (in-memory, no Neo4j).");
 Console.WriteLine();
 
-// --- Eager approach: summarize ALL communities upfront ---
+// --- The summarisation LLM (stubbed, deterministic, call-counting). ---
+// In production this is a real IChatClient (Azure OpenAI, Ollama, ...). Here it
+// returns a fixed summary and counts every summarise call so we can SEE the
+// cache avoid the second one.
+var llm = new CountingChatClient(prompt =>
+    prompt.Contains("Subgraph:", StringComparison.Ordinal)
+        ? "Acme is a manufacturing client served by the Paris office under the MSA 2026 contract."
+        : "{\"entities\":[{\"id\":\"acme\",\"type\":\"Client\",\"name\":\"Acme\"}]}");
 
-Console.WriteLine("--- Eager Approach: Summarize all communities upfront ---");
-var (eagerSummaries, eagerTokens) = EagerSummarize(communities, nodes, edges);
-Console.WriteLine($"  Summarized {eagerSummaries.Count} communities");
-Console.WriteLine($"  Total tokens used: {eagerTokens:N0}");
-foreach (var (id, summary) in eagerSummaries)
-{
-    Console.WriteLine($"  [{id}]: {Truncate(summary, 70)}");
-}
+// EntityExtractor uses the same stub to turn the query into seed entities.
+var extractor = new EntityExtractor(llm);
 
+// The cache that makes the LazyGraphRAG economics real. In production this is an
+// IDistributedCache / Redis adapter (Ch 21); here it is the in-memory dev seam.
+var cache = new InMemorySummaryCache();
+
+var retriever = new LazyGraphRagRetriever(extractor, graph, llm, maxHops: 2, cache: cache);
+
+// --- Run the SAME question twice. ---
+Console.WriteLine("--- Query 1 (cold cache) ---");
+var first = await retriever.RetrieveAsync("Tell me about Acme", topK: 1).ConfigureAwait(false);
+Console.WriteLine($"  Summary: {first[0].Chunk.Text}");
+Console.WriteLine($"  LLM summarise calls: {llm.SummariseCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
 Console.WriteLine();
 
-// --- Lazy approach: only summarize when queried, then cache ---
-
-Console.WriteLine("--- Lazy Approach: Summarize on demand, cache results ---");
-var lazyCache = new Dictionary<string, string>();
-
-// Simulate two queries that hit different communities.
-var query1Community = communities[0].Id;
-var query2Community = communities.Count > 1 ? communities[1].Id : communities[0].Id;
-
-var (_, tokens1) = LazySummarize(query1Community, communities, nodes, edges, lazyCache);
-Console.WriteLine($"  Query 1 hits [{query1Community}]: tokens used = {tokens1:N0} (cache miss)");
-
-var (_, tokens1Cached) = LazySummarize(query1Community, communities, nodes, edges, lazyCache);
-Console.WriteLine($"  Query 2 hits [{query1Community}] again: tokens used = {tokens1Cached:N0} (cache hit)");
-
-var (_, tokens2) = LazySummarize(query2Community, communities, nodes, edges, lazyCache);
-Console.WriteLine($"  Query 3 hits [{query2Community}]: tokens used = {tokens2:N0} (cache miss)");
-
-var totalLazyTokens = tokens1 + tokens1Cached + tokens2;
+Console.WriteLine("--- Query 2 (same subgraph, warm cache) ---");
+var second = await retriever.RetrieveAsync("What do we know about Acme?", topK: 1).ConfigureAwait(false);
+Console.WriteLine($"  Summary: {second[0].Chunk.Text}");
+Console.WriteLine($"  LLM summarise calls: {llm.SummariseCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
 Console.WriteLine();
 
-// --- Cost comparison ---
-
-Console.WriteLine("--- Cost Comparison ---");
-Console.WriteLine($"  Eager total tokens (upfront):     {eagerTokens:N0}");
-Console.WriteLine($"  Lazy total tokens (3 queries):    {totalLazyTokens:N0}");
-var savings = 1.0 - ((double)totalLazyTokens / eagerTokens);
-Console.WriteLine($"  Lazy savings:                     {savings:P1}");
+// --- What the numbers mean. ---
+Console.WriteLine("--- Result ---");
+Console.WriteLine($"  Two queries resolved to the same subgraph.");
+Console.WriteLine($"  The LLM summarised only {llm.SummariseCalls} time(s); query 2 was served from cache.");
+Console.WriteLine($"  cache Hits={cache.Hits}, Misses={cache.Misses}.");
 Console.WriteLine();
-Console.WriteLine("  Insight: Lazy GraphRAG avoids summarizing communities that");
-Console.WriteLine("  are never queried, reducing cost for large knowledge graphs.");
+Console.WriteLine("  Insight: LazyGraphRAG pays for summarisation per query, but caching");
+Console.WriteLine("  by subgraph means equivalent questions cost nothing extra — the");
+Console.WriteLine("  economics the chapter claims, made true and offline-testable.");
 return;
 
-// --- Helpers ---
+// --- Offline helpers (must follow top-level statements) ---
 
-static List<Community> DetectCommunities(List<GraphNode> nodes, List<GraphEdge> edges)
+/// <summary>
+/// Deterministic, call-counting <see cref="IChatClient"/>. Replies via a
+/// caller-supplied function and counts summarise calls (prompts that carry
+/// "Subgraph:") so the demo can show the cache avoiding the LLM.
+/// </summary>
+internal sealed class CountingChatClient(Func<string, string> respond) : IChatClient
 {
-    // Build adjacency list (undirected).
-    var adj = new Dictionary<string, HashSet<string>>();
-    foreach (var node in nodes)
-    {
-        adj[node.Id] = [];
-    }
+    private int _summariseCalls;
 
-    foreach (var edge in edges)
-    {
-        adj[edge.SourceId].Add(edge.TargetId);
-        adj[edge.TargetId].Add(edge.SourceId);
-    }
+    public int SummariseCalls => _summariseCalls;
 
-    // BFS to find connected components.
-    var visited = new HashSet<string>();
-    var communities = new List<Community>();
-    var communityIndex = 0;
-
-    foreach (var node in nodes)
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
-        if (visited.Contains(node.Id))
+        ArgumentNullException.ThrowIfNull(messages);
+        var text = string.Join(
+            Environment.NewLine,
+            messages.Where(m => m.Role == ChatRole.User).Select(m => m.Text));
+        if (text.Contains("Subgraph:", StringComparison.Ordinal))
         {
-            continue;
+            Interlocked.Increment(ref _summariseCalls);
         }
-
-        var component = new List<string>();
-        var queue = new Queue<string>();
-        queue.Enqueue(node.Id);
-        visited.Add(node.Id);
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            component.Add(current);
-
-            foreach (var neighbor in adj[current])
-            {
-                if (visited.Add(neighbor))
-                {
-                    queue.Enqueue(neighbor);
-                }
-            }
-        }
-
-        communities.Add(new Community($"community-{communityIndex++}", component));
+        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, respond(text))));
     }
 
-    return communities;
-}
+    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The offline demo does not stream.");
 
-static (Dictionary<string, string> Summaries, int TotalTokens) EagerSummarize(
-    List<Community> communities,
-    List<GraphNode> nodes,
-    List<GraphEdge> edges)
-{
-    var summaries = new Dictionary<string, string>();
-    var totalTokens = 0;
-
-    foreach (var community in communities)
+    public object? GetService(Type serviceType, object? serviceKey = null)
     {
-        var (summary, tokens) = GenerateCommunitySummary(community, nodes, edges);
-        summaries[community.Id] = summary;
-        totalTokens += tokens;
+        ArgumentNullException.ThrowIfNull(serviceType);
+        return serviceKey is null && serviceType.IsInstanceOfType(this) ? this : null;
     }
 
-    return (summaries, totalTokens);
-}
-
-static (string Summary, int TokensUsed) LazySummarize(
-    string communityId,
-    List<Community> communities,
-    List<GraphNode> nodes,
-    List<GraphEdge> edges,
-    Dictionary<string, string> cache)
-{
-    if (cache.TryGetValue(communityId, out var cached))
+    public void Dispose()
     {
-        return (cached, 0); // Cache hit — zero additional tokens.
+        // Nothing to dispose.
+    }
+}
+
+/// <summary>
+/// Minimal in-memory <see cref="IGraphStore"/>: traversal returns every entity
+/// whose name or property values mention one of the query's seed names. Stands
+/// in for Neo4j so the demo runs with no database.
+/// </summary>
+internal sealed class InMemoryGraph : IGraphStore
+{
+    private readonly List<GraphEntity> _entities = [];
+
+    public int Count => _entities.Count;
+
+    public void Add(GraphEntity entity) => _entities.Add(entity);
+
+    public Task EnsureSchemaExistsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task UpsertEntityAsync(GraphEntity entity, CancellationToken cancellationToken = default)
+    {
+        _entities.Add(entity);
+        return Task.CompletedTask;
     }
 
-    var community = communities.First(c => c.Id == communityId);
-    var (summary, tokens) = GenerateCommunitySummary(community, nodes, edges);
-    cache[communityId] = summary;
-    return (summary, tokens);
+    public Task UpsertRelationAsync(GraphRelation relation, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, object>>> QueryAsync(
+        string query,
+        IReadOnlyDictionary<string, object>? parameters = null,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<IReadOnlyDictionary<string, object>>>([]);
+
+    public Task<IReadOnlyList<GraphEntity>> TraverseAsync(
+        IEnumerable<string> entityNames,
+        int maxHops,
+        CancellationToken cancellationToken = default)
+    {
+        var seeds = entityNames.Select(n => n.ToLowerInvariant()).ToHashSet();
+        IReadOnlyList<GraphEntity> hits = [.. _entities.Where(e =>
+            seeds.Any(n => e.Name.Contains(n, StringComparison.OrdinalIgnoreCase) ||
+                           e.Properties.Values.Any(v => v.Contains(n, StringComparison.OrdinalIgnoreCase))))];
+        return Task.FromResult(hits);
+    }
 }
-
-static (string Summary, int TokensUsed) GenerateCommunitySummary(
-    Community community,
-    List<GraphNode> nodes,
-    List<GraphEdge> edges)
-{
-    // Simulate LLM summarization. In production, this calls the LLM.
-    var memberNodes = nodes.Where(n => community.MemberIds.Contains(n.Id)).ToList();
-    var relevantEdges = edges
-        .Where(e => community.MemberIds.Contains(e.SourceId) && community.MemberIds.Contains(e.TargetId))
-        .ToList();
-
-    var summary = $"Community of {memberNodes.Count} entities ({string.Join(", ", memberNodes.Select(n => n.Label))}) " +
-                  $"connected by {relevantEdges.Count} relationships.";
-
-    // Estimate tokens: ~4 chars per token for input context.
-    var inputContext = string.Join(" ", memberNodes.Select(n => $"{n.Label}: {n.Description}")) +
-                       string.Join(" ", relevantEdges.Select(e => $"{e.SourceId} {e.Relationship} {e.TargetId}"));
-    var estimatedTokens = inputContext.Length / 4 + summary.Length / 4;
-
-    return (summary, estimatedTokens);
-}
-
-static string Truncate(string s, int max) =>
-    s.Length <= max ? s : s[..max] + "...";
-
-// --- Domain types (must follow top-level statements) ---
-
-/// <summary>A node in the knowledge graph.</summary>
-sealed record GraphNode(string Id, string Label, string Description);
-
-/// <summary>A directed edge in the knowledge graph.</summary>
-sealed record GraphEdge(string SourceId, string TargetId, string Relationship);
-
-/// <summary>A community detected by the graph algorithm.</summary>
-sealed record Community(string Id, IReadOnlyList<string> MemberIds);
