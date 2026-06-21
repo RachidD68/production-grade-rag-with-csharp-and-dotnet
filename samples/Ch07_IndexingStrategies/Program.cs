@@ -1,148 +1,204 @@
 // Chapter 7 — Indexing Strategies.
 //
-// Demonstrates full-chunk vs parent-child indexing approaches.
-// A sample document (3 paragraphs) is indexed both ways, then a
-// fine-grained query is used to show how parent-child retrieval
-// surfaces the right parent context while full-chunk may miss it.
+// A recall@k comparison harness for the four real indexing strategies in
+// SmartDocs.Ingestion.Indexing: chunk, sub-chunk, summary, and query. Each
+// strategy projects a DocumentChunk into one or more "embedding inputs"; the
+// harness embeds those inputs, upserts them into a fresh in-memory vector
+// store, runs a fixed gold query set, and reports recall@k alongside the cost
+// signals that distinguish the strategies — vectors indexed, index-time LLM
+// calls, and wall-clock.
 //
-// Run:
+// Deterministic and offline by default: a bag-of-words embedder and a stub
+// IChatClient stand in for a real model so the run is reproducible in CI with
+// no key. Set CH07_USE_OLLAMA=1 (optionally OLLAMA_ENDPOINT) to swap the
+// embedder for a live Ollama model; the chat client stays stubbed so question
+// and summary text remain deterministic.
+//
+// Run (offline, default):
 //   dotnet run --project samples/Ch07_IndexingStrategies
+//
+// Run with a real embedder:
+//   CH07_USE_OLLAMA=1 dotnet run --project samples/Ch07_IndexingStrategies
 
-using System.Numerics.Tensors;
+using System.Diagnostics;
+using Microsoft.Extensions.AI;
+using OllamaSharp;
+using RagInDotNet.Samples.Ch07_IndexingStrategies;
+using SmartDocs.Core.Abstractions;
+using SmartDocs.Core.Documents;
+using SmartDocs.Evaluation;
+using SmartDocs.Ingestion.Indexing;
+using SmartDocs.Retrieval.VectorStores;
 
-// --- Sample document ---
-
-string[] paragraphs =
-[
-    "The company's remote work policy allows employees to work from home up to three days per week. " +
-    "Employees must be available during core hours of 10 AM to 3 PM in their local time zone. " +
-    "All remote workers must use the company VPN for accessing internal systems.",
-
-    "Performance reviews are conducted quarterly using the OKR framework. " +
-    "Each employee sets three to five objectives at the beginning of the quarter. " +
-    "Managers provide written feedback within two weeks of the quarter ending.",
-
-    "The equipment stipend is $1,500 per year for home office setup. " +
-    "Approved items include monitors, keyboards, ergonomic chairs, and standing desks. " +
-    "Receipts must be submitted through the expense portal within 30 days of purchase.",
-];
-
-Console.WriteLine("=== Ch07: Indexing Strategies ===");
+Console.WriteLine("=== Ch07: Indexing Strategies — recall@k comparison ===");
 Console.WriteLine();
 
-// --- Full-chunk indexing ---
+var chunks = Corpus.BuildChunks();
+var gold = Corpus.BuildGoldQueries();
+const int K = Corpus.GoldK;
 
-Console.WriteLine("--- Full-Chunk Indexing (paragraph = chunk) ---");
-var fullChunks = IndexFullChunks(paragraphs);
-Console.WriteLine($"Indexed {fullChunks.Count} chunks");
+// --- Embedder: deterministic bag-of-words by default; Ollama on request. -----
+var chat = new CountingStubChatClient();
+IEmbeddingGenerator<string, Embedding<float>> embedder = new BagOfWordsEmbeddingGenerator();
+var embeddingModelName = "bag-of-words-256";
 
-// --- Parent-child indexing ---
-
-Console.WriteLine();
-Console.WriteLine("--- Parent-Child Indexing (sentence = child, paragraph = parent) ---");
-var parentChunks = IndexParentChild(paragraphs);
-var totalChildren = parentChunks.Sum(p => p.Children.Count);
-Console.WriteLine($"Indexed {parentChunks.Count} parents, {totalChildren} children");
-
-// --- Query ---
-
-const string query = "What is the equipment stipend amount?";
-Console.WriteLine();
-Console.WriteLine($"Query: \"{query}\"");
-
-// Simulate a query embedding biased toward financial/stipend content.
-var queryEmbedding = BagOfWordsEmbedding(query);
-
-// Full-chunk retrieval.
-Console.WriteLine();
-Console.WriteLine("--- Full-Chunk Results (top 1) ---");
-var fullResult = fullChunks
-    .OrderByDescending(c => CosineSim(queryEmbedding.Span, c.Embedding.Span))
-    .First();
-Console.WriteLine($"  [{fullResult.Id}] {Truncate(fullResult.Content, 80)}");
-
-// Parent-child retrieval: search children, return parent.
-Console.WriteLine();
-Console.WriteLine("--- Parent-Child Results (search children, return parent) ---");
-var allChildren = parentChunks.SelectMany(p => p.Children);
-var bestChild = allChildren
-    .OrderByDescending(c => CosineSim(queryEmbedding.Span, c.Embedding.Span))
-    .First();
-var bestParent = parentChunks.First(p => p.Id == bestChild.ParentId);
-Console.WriteLine($"  Best child: [{bestChild.Id}] \"{Truncate(bestChild.Content, 60)}\"");
-Console.WriteLine($"  Returned parent: [{bestParent.Id}] \"{Truncate(bestParent.Content, 80)}\"");
-Console.WriteLine($"  Parent has {bestParent.Children.Count} children providing full context.");
-
-Console.WriteLine();
-Console.WriteLine("Key insight: Parent-child indexing matches on fine-grained sentences");
-Console.WriteLine("but returns the full paragraph for richer LLM context.");
-return;
-
-// --- Indexers ---
-
-static List<FullChunk> IndexFullChunks(string[] paragraphs) =>
-    paragraphs.Select((p, i) => new FullChunk(
-        Id: $"full-{i}",
-        Content: p,
-        Embedding: BagOfWordsEmbedding(p)
-    )).ToList();
-
-static List<ParentChunk> IndexParentChild(string[] paragraphs) =>
-    paragraphs.Select((p, pi) =>
-    {
-        var sentences = p.Split(". ", StringSplitOptions.RemoveEmptyEntries);
-        var children = sentences.Select((s, si) => new ChildChunk(
-            Id: $"child-{pi}-{si}",
-            ParentId: $"parent-{pi}",
-            Content: s.TrimEnd('.') + ".",
-            Embedding: BagOfWordsEmbedding(s)
-        )).ToList();
-
-        return new ParentChunk($"parent-{pi}", p, children);
-    }).ToList();
-
-// --- Utility ---
-
-static ReadOnlyMemory<float> BagOfWordsEmbedding(string text)
+if (Environment.GetEnvironmentVariable("CH07_USE_OLLAMA") == "1")
 {
-    // Simplified bag-of-words embedding using word hashing.
-    // Deterministic, no external model needed.
-    const int dims = 64;
-    var vec = new float[dims];
-    var words = text.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    foreach (var word in words)
+    var endpoint = new Uri(
+        Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434");
+    const string OllamaEmbeddingModel = "nomic-embed-text";
+    if (await IsOllamaReachableAsync(endpoint).ConfigureAwait(false))
     {
-        var hash = word.GetHashCode(StringComparison.Ordinal);
-        var idx = Math.Abs(hash) % dims;
-        vec[idx] += 1.0f;
+        embedder = new OllamaApiClient(endpoint, OllamaEmbeddingModel);
+        embeddingModelName = OllamaEmbeddingModel;
+        Console.WriteLine($"Embedder: Ollama '{OllamaEmbeddingModel}' at {endpoint}.");
     }
-
-    // Normalize.
-    var mag = MathF.Sqrt(vec.Sum(v => v * v));
-    if (mag > 0)
+    else
     {
-        for (var i = 0; i < dims; i++)
+        Console.WriteLine($"CH07_USE_OLLAMA=1 but Ollama is not reachable at {endpoint}.");
+        Console.WriteLine("  Falling back to the deterministic bag-of-words embedder.");
+    }
+}
+else
+{
+    Console.WriteLine("Embedder: deterministic bag-of-words (offline). Set CH07_USE_OLLAMA=1 for Ollama.");
+}
+
+Console.WriteLine(
+    $"Corpus: {chunks.Count} chunks across {chunks.Select(c => c.DocumentId).Distinct().Count()} documents | " +
+    $"Gold queries: {gold.Count}, recall@{K}");
+Console.WriteLine();
+
+// --- The four real strategies. ----------------------------------------------
+// Each is constructed once and run directly for the comparison. The builder
+// below shows the routing-by-extension API the chapter teaches; the comparison
+// loop then exercises each strategy in isolation so the per-strategy numbers
+// are clean.
+var strategies = new IIndexingStrategy[]
+{
+    new ChunkIndexingStrategy(),
+    new SubChunkIndexingStrategy(),
+    new SummaryIndexingStrategy(chat),
+    new QueryIndexingStrategy(chat, questionsPerChunk: 3),
+};
+
+// The production wiring readers will recognise: pick a strategy per document
+// type, falling back to plain chunk indexing. Shown once for fidelity to the
+// chapter; the measured comparison below runs each strategy on its own.
+var pipeline = new IndexingPipelineBuilder()
+    .ForDocumentType(".md", new QueryIndexingStrategy(chat))
+    .ForDocumentType(".pdf", new SummaryIndexingStrategy(chat))
+    .Default(new ChunkIndexingStrategy())
+    .Build();
+_ = pipeline; // referenced for illustration; the comparison uses the strategies directly.
+
+var reports = new List<StrategyReport>(strategies.Length);
+foreach (var strategy in strategies)
+{
+    reports.Add(await EvaluateAsync(strategy, chunks, gold, embedder, embeddingModelName, chat, K)
+        .ConfigureAwait(false));
+}
+
+// --- Comparison table. ------------------------------------------------------
+Console.WriteLine();
+Console.WriteLine(
+    $"{"strategy",-10} {"vectors",8} {"LLM calls",10} {$"recall@{K}",10} {"wall (ms)",10}");
+Console.WriteLine(new string('-', 52));
+foreach (var r in reports)
+{
+    Console.WriteLine(
+        $"{r.Strategy,-10} {r.VectorsIndexed,8} {r.LlmCalls,10} {r.RecallAtK,10:P1} {r.WallClockMs,10:F1}");
+}
+Console.WriteLine();
+Console.WriteLine($"Recall is measured at k={K} over {gold.Count} gold queries; vectors are the embedding");
+Console.WriteLine("inputs each strategy produced (query indexing fans one chunk out to N rows).");
+return 0;
+
+// --- Harness ----------------------------------------------------------------
+
+// Run one strategy end-to-end: index every chunk into embedding inputs, embed
+// each input, upsert into a fresh store, query the gold set, and score recall@k.
+static async Task<StrategyReport> EvaluateAsync(
+    IIndexingStrategy strategy,
+    IReadOnlyList<DocumentChunk> chunks,
+    IReadOnlyList<GoldenItem> gold,
+    IEmbeddingGenerator<string, Embedding<float>> embedder,
+    string embeddingModelName,
+    CountingStubChatClient chat,
+    int k)
+{
+    chat.Reset();
+    var store = new InMemoryVectorStore($"ch07-{strategy.Strategy}");
+    await store.EnsureCollectionExistsAsync().ConfigureAwait(false);
+
+    var sw = Stopwatch.StartNew();
+
+    // Index: project each chunk into IndexedItems, embed the key text, upsert.
+    var vectorsIndexed = 0;
+    foreach (var chunk in chunks)
+    {
+        await foreach (var item in strategy.IndexAsync(chunk).ConfigureAwait(false))
         {
-            vec[i] /= mag;
+            var vector = await EmbedAsync(embedder, item.EmbedText).ConfigureAwait(false);
+            await store.UpsertAsync(
+                [new EmbeddedChunk(item.Payload, vector, embeddingModelName)]).ConfigureAwait(false);
+            vectorsIndexed++;
         }
     }
 
-    return vec;
+    // Query: embed each gold query, search top-k, pair hits with the gold item.
+    var samples = new List<(GoldenItem Gold, IReadOnlyList<RetrievalResult> Hits)>(gold.Count);
+    foreach (var item in gold)
+    {
+        var queryVector = await EmbedAsync(embedder, item.Query).ConfigureAwait(false);
+        var hits = await store.SearchAsync(queryVector, k).ConfigureAwait(false);
+        samples.Add((item, hits));
+    }
+
+    sw.Stop();
+
+    // Reuse the production metric — recall@k matches on DocumentId.
+    var metrics = RetrievalEvaluator.Evaluate(samples, k);
+
+    return new StrategyReport(
+        Strategy: strategy.Strategy,
+        VectorsIndexed: vectorsIndexed,
+        LlmCalls: chat.CallCount,
+        RecallAtK: metrics.RecallAtK,
+        WallClockMs: sw.Elapsed.TotalMilliseconds);
 }
 
-static float CosineSim(ReadOnlySpan<float> a, ReadOnlySpan<float> b) =>
-    TensorPrimitives.CosineSimilarity(a, b);
+// GenerateAsync returns a collection; take [0].Vector (the MEAI convention).
+static async Task<ReadOnlyMemory<float>> EmbedAsync(
+    IEmbeddingGenerator<string, Embedding<float>> embedder,
+    string text)
+{
+    var embeddings = await embedder.GenerateAsync([text]).ConfigureAwait(false);
+    return embeddings[0].Vector;
+}
 
-static string Truncate(string s, int max) =>
-    s.Length <= max ? s : s[..max] + "...";
+static async Task<bool> IsOllamaReachableAsync(Uri endpoint)
+{
+    try
+    {
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        using var response = await http.GetAsync(endpoint).ConfigureAwait(false);
+        return response.IsSuccessStatusCode;
+    }
+    catch (HttpRequestException)
+    {
+        return false;
+    }
+    catch (TaskCanceledException)
+    {
+        return false;
+    }
+}
 
-// --- Domain types (must follow top-level statements) ---
-
-/// <summary>A chunk in the full-chunk index (each paragraph = one chunk).</summary>
-sealed record FullChunk(string Id, string Content, ReadOnlyMemory<float> Embedding);
-
-/// <summary>A parent chunk in parent-child indexing (paragraph-level).</summary>
-sealed record ParentChunk(string Id, string Content, IReadOnlyList<ChildChunk> Children);
-
-/// <summary>A child chunk (sentence-level) pointing back to its parent.</summary>
-sealed record ChildChunk(string Id, string ParentId, string Content, ReadOnlyMemory<float> Embedding);
+/// <summary>One row of the strategy comparison table.</summary>
+internal sealed record StrategyReport(
+    string Strategy,
+    int VectorsIndexed,
+    int LlmCalls,
+    double RecallAtK,
+    double WallClockMs);
