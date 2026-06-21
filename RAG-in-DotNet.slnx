@@ -10,6 +10,7 @@
     <Project Path="samples/Ch25_VerticalSliceVariant/Ch25_VerticalSliceVariant.csproj" />
     <Project Path="samples/Ch06_VectorDbComparison/Ch06_VectorDbComparison.csproj" />
     <Project Path="samples/Ch07_IndexingStrategies/Ch07_IndexingStrategies.csproj" />
+    <Project Path="samples/Ch08_RetrieverEval/Ch08_RetrieverEval.csproj" />
     <Project Path="samples/Ch16_VectorlessRetrieval/Ch16_VectorlessRetrieval.csproj" />
     <Project Path="samples/Ch17_LazyGraphRagDemo/Ch17_LazyGraphRagDemo.csproj" />
     <Project Path="samples/Ch22_DriftAdapterMigration/Ch22_DriftAdapterMigration.csproj" />

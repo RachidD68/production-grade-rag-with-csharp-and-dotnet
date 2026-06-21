@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Samples.Ch08_RetrieverEval</RootNamespace>
+    <AssemblyName>Ch08_RetrieverEval</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="OllamaSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Evaluation\SmartDocs.Evaluation.csproj" />
+  </ItemGroup>
+
+</Project>
