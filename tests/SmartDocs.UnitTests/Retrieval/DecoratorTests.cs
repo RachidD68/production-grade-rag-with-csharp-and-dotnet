@@ -1,5 +1,6 @@
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Retrieval;
 using SmartDocs.Retrieval.Decorators;
 
 namespace SmartDocs.UnitTests.Retrieval;
@@ -87,6 +88,51 @@ public sealed class DecoratorTests
 
         Assert.Single(hits);
         Assert.Equal("web", hits[0].Chunk.DocumentId);
+    }
+
+    [Fact]
+    public async Task StepBackRetriever_issues_original_and_stepback_queries_and_merges()
+    {
+        var calls = new List<string>();
+        var inner = new RecordingRetriever(q =>
+        {
+            calls.Add(q);
+            // Each leg returns a distinct hit so the RRF merge yields both.
+            return new[] { new RetrievalResult(Chunk(q, q), 0.5) };
+        });
+        var chat = new StubChatClient(_ => "What are the general principles of employee leave?");
+        var stepback = new StepBackRetriever(inner, chat);
+
+        var hits = await stepback.RetrieveAsync("How many vacation days do I get?", topK: 5);
+
+        // BOTH the original query and the broader step-back query were issued.
+        Assert.Contains("How many vacation days do I get?", calls);
+        Assert.Contains("What are the general principles of employee leave?", calls);
+        Assert.Equal(2, calls.Count);
+
+        // The two single-hit legs were fused into the result set.
+        Assert.Equal(2, hits.Count);
+        Assert.Equal("stepback(stub)", stepback.Strategy);
+    }
+
+    [Fact]
+    public async Task StepBackRetriever_falls_back_to_original_when_stepback_is_empty()
+    {
+        var calls = new List<string>();
+        var inner = new RecordingRetriever(q =>
+        {
+            calls.Add(q);
+            return new[] { new RetrievalResult(Chunk(q, q), 0.5) };
+        });
+        var chat = new StubChatClient(_ => "   "); // model returned nothing usable
+        var stepback = new StepBackRetriever(inner, chat);
+
+        var hits = await stepback.RetrieveAsync("vacation?", topK: 5);
+
+        // Only the original leg ran; no degenerate second query.
+        Assert.Single(calls);
+        Assert.Equal("vacation?", calls[0]);
+        Assert.Single(hits);
     }
 
     private sealed class RecordingRetriever : IRetriever

@@ -1,14 +1,20 @@
-// Ch 15 — IChatMessageInjector pattern (MAF 1.6.1)
+// Ch 15 — Loading retrieved context into an agent BEFORE the first turn
 //
-// Background: MAF 1.6.1 introduced IChatMessageInjector, an abstraction for
-// injecting messages into an agent's function loop at runtime. The hook
-// matters for RAG because retrieval is usually upstream of the agent — you
-// want the agent to start with context already in hand, not discover it
-// through tool calls.
+// Two ways to ground a MAF 1.10.0 ChatClientAgent in already-retrieved chunks,
+// both shown here against the offline stub chat client:
 //
-// This sample shows the .NET-side equivalent: SmartDocsAgent.RunWithInjectedChunksAsync
-// folds retriever output into a preamble message before the agent's first
-// turn. Same effect, no dependency on the experimental injector surface.
+//   1. Framework-native: a RetrievedChunksContextProvider (a MAF
+//      MessageAIContextProvider) attached via ChatClientAgentOptions
+//      .AIContextProviders. MAF prepends the provider's messages to the
+//      request, so the chunks load before the first turn. This is the correct
+//      primitive when retrieval runs upstream of the agent.
+//
+//   2. From-scratch: RunWithInjectedChunksAsync folds retriever output into a
+//      preamble by hand — same effect, no provider abstraction, shown so the
+//      mechanics are explicit.
+//
+// Both differ from MAF's IChatMessageInjector, whose injection happens MID
+// function-loop (while the agent runs), not as a pre-turn preamble.
 //
 // Run: dotnet run --project samples/Ch15_ChatMessageInjector
 
@@ -21,11 +27,6 @@ using SmartDocs.Core.Documents;
 var retriever = new InMemoryDocsRetriever();
 var chat = new EchoCitationClient();
 
-var agent = SmartDocsAgent.Create(chat, retriever);
-
-// Inject the top-3 chunks before the first user turn:
-var injectorOptions = new ChunkInjectorOptions(retriever, TopK: 3);
-
 var question = args.Length > 0
     ? string.Join(' ', args)
     : "What is the vacation policy?";
@@ -33,11 +34,26 @@ var question = args.Length > 0
 Console.WriteLine($"Question: {question}");
 Console.WriteLine();
 
-var answer = await SmartDocsAgent
-    .RunWithInjectedChunksAsync(agent, question, injectorOptions);
+// ── Path 1: framework-native MAF context provider ───────────────────────────
+// Retrieve upstream, then hand the chunks to the agent via a context provider.
+var hits = await retriever.RetrieveAsync(question, topK: 3);
+var chunks = hits.Select(h => h.Chunk).ToList();
 
-Console.WriteLine("Answer (chunks pre-injected; agent did not call its own tools):");
-Console.WriteLine(answer);
+var providerAgent = SmartDocsAgent.CreateWithRetrievedContext(chat, chunks, retriever);
+var session = await providerAgent.CreateSessionAsync();
+var providerResult = await providerAgent.RunAsync(question, session);
+
+Console.WriteLine("[1] Framework-native context provider (MessageAIContextProvider):");
+Console.WriteLine(providerResult.Text);
+Console.WriteLine();
+
+// ── Path 2: hand-built pre-turn preamble (from scratch) ─────────────────────
+var injectorOptions = new ChunkInjectorOptions(retriever, TopK: 3);
+var manualAnswer = await SmartDocsAgent
+    .RunWithInjectedChunksAsync(SmartDocsAgent.Create(chat, retriever), question, injectorOptions);
+
+Console.WriteLine("[2] Hand-built session preamble (no provider abstraction):");
+Console.WriteLine(manualAnswer);
 
 return 0;
 
@@ -86,9 +102,10 @@ sealed class EchoCitationClient : IChatClient
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        // Detect injected preamble — the first user message will start with the prefix.
-        var firstUser = messages.FirstOrDefault(m => m.Role == ChatRole.User)?.Text ?? "";
-        var injected = firstUser.Contains("Pre-retrieved context");
+        // Detect injected preamble — it arrives either as a system-role context
+        // message (Path 1) or as the first user message (Path 2). Both carry the
+        // "Pre-retrieved context" marker.
+        var injected = messages.Any(m => (m.Text ?? "").Contains("Pre-retrieved context"));
 
         var answer = injected
             ? "Full-time employees get 20 vacation days per year, with up to 5 days carryover [Source 1]. " +
