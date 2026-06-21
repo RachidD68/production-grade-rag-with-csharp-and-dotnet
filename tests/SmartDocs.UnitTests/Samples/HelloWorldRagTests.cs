@@ -73,6 +73,41 @@ public sealed class HelloWorldRagTests
     }
 
     [Fact]
+    public async Task Abstains_without_calling_the_LLM_when_top_score_is_below_threshold()
+    {
+        // The Chapter 1 Challenge: a no-result threshold. An out-of-corpus
+        // question whose best match is below minScore must short-circuit to a
+        // grounded "not enough information" WITHOUT spending an LLM call.
+        var docs = HelloWorldRag.HardcodedHrPolicies;
+        var question = "What is the capital of France?";
+
+        // dim = docs.Count + 1: each document gets one-hot e_i; the out-of-corpus
+        // question gets the extra axis e_n, orthogonal to every doc, so cosine == 0.
+        var dim = docs.Count + 1;
+        var embeddings = new StubEmbeddingGenerator(text =>
+        {
+            var v = new float[dim];
+            var idx = -1;
+            for (int j = 0; j < docs.Count; j++)
+            {
+                if (docs[j] == text) { idx = j; break; }
+            }
+            v[idx >= 0 ? idx : docs.Count] = 1.0f;
+            return v;
+        });
+
+        // If the short-circuit fails and the LLM is reached, the test fails loudly.
+        var chat = new StubChatClient(_ =>
+            throw new InvalidOperationException("LLM was called despite abstaining"));
+
+        var answer = await HelloWorldRag.AskAsync(
+            embeddings, chat, docs, question, minScore: 0.3);
+
+        Assert.Equal(
+            "I don't have enough information to answer that question.", answer);
+    }
+
+    [Fact]
     public void Cosine_returns_one_for_identical_unit_vectors()
     {
         float[] a = [1f, 0f, 0f];

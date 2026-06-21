@@ -37,12 +37,19 @@ internal static class HelloWorldRag
         IReadOnlyList<string> documents,
         string question,
         int topK = 3,
+        double minScore = 0.0,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(embeddings);
         ArgumentNullException.ThrowIfNull(chat);
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
+
+        // A production RAG pipeline splits into two phases: an offline INDEXING
+        // pass (load -> chunk -> embed -> store) that runs once, and an online
+        // QUERY pass (embed query -> retrieve -> augment -> generate). This Hello
+        // World deliberately collapses both, re-embedding the corpus on every
+        // call, for simplicity; from Chapter 6 onward the index is persistent.
 
         // 1. Embed the corpus.
         var docEmbeddings = await embeddings.GenerateAsync(documents, cancellationToken: cancellationToken);
@@ -61,6 +68,17 @@ internal static class HelloWorldRag
             .OrderByDescending(x => x.Score)
             .Take(topK)
             .ToList();
+
+        // 3b. Abstain when nothing clears the relevance floor. The default
+        // minScore of 0 preserves the original always-answer behaviour; set
+        // SmartDocs:Llm:NoResultThreshold in appsettings.json (the Chapter 1
+        // Challenge exercise) to turn it on. A too-weak top match means the
+        // corpus probably can't answer, so skip the LLM call rather than
+        // invite a hallucination.
+        if (ranked.Count == 0 || (minScore > 0.0 && ranked[0].Score < minScore))
+        {
+            return "I don't have enough information to answer that question.";
+        }
 
         // 4. Augment & generate.
         var contextBlock = string.Join(

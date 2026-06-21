@@ -28,6 +28,17 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     ContentRootPath = AppContext.BaseDirectory,
 });
 builder.Configuration.AddJsonFile("appsettings.json", optional: false);
+
+// The Challenge exercise's no-result threshold: when the best match is too
+// weak, skip the LLM call and return a grounded "not enough information".
+// Absent or 0 preserves the original always-answer behaviour.
+var minScore = double.TryParse(
+    builder.Configuration["SmartDocs:Llm:NoResultThreshold"],
+    System.Globalization.CultureInfo.InvariantCulture,
+    out var threshold)
+    ? threshold
+    : 0.0;
+
 builder.Services.AddSmartDocsCore(builder.Configuration);
 using var host = builder.Build();
 
@@ -38,7 +49,8 @@ var answer = await HelloWorldRag.AskAsync(
     embeddings,
     chat,
     HelloWorldRag.HardcodedHrPolicies,
-    "How many vacation days do I get?");
+    "How many vacation days do I get?",
+    minScore: minScore);
 
 Console.WriteLine();
 Console.WriteLine("=== Answer ===");
