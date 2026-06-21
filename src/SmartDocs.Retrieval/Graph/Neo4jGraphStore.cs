@@ -3,9 +3,13 @@ using Neo4j.Driver;
 namespace SmartDocs.Retrieval.Graph;
 
 /// <summary>
-/// Neo4j adapter for <see cref="IGraphStore"/> using the official driver
-/// (server CalVer 2025.x; driver SemVer 6.x). Neo4j 5.x server is what
-/// the local <c>infra/docker-compose</c> brings up.
+/// Neo4j adapter for <see cref="IGraphStore"/> using the official driver.
+/// Targets the Neo4j 5.26 (community, LTS) server — what the local
+/// <c>infra/docker-compose</c> brings up — with the 6.x SemVer driver.
+/// All read/write work runs inside managed transactions
+/// (<see cref="IAsyncSession.ExecuteReadAsync{T}(System.Func{IAsyncQueryRunner, Task{T}}, System.Action{TransactionConfigBuilder})"/>
+/// / <c>ExecuteWriteAsync</c>) so the driver applies its built-in retry on
+/// transient failures and leader switches.
 /// </summary>
 public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
 {
@@ -20,7 +24,18 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
     public async Task EnsureSchemaExistsAsync(CancellationToken cancellationToken = default)
     {
         await using var session = _driver.AsyncSession();
-        await session.RunAsync("CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE").ConfigureAwait(false);
+        await session.ExecuteWriteAsync(async tx =>
+        {
+            var c1 = await tx.RunAsync(
+                "CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE").ConfigureAwait(false);
+            await c1.ConsumeAsync().ConfigureAwait(false);
+
+            // Full-text index over Entity.name — backs the seed lookup in
+            // TraverseAsync so it no longer scans every :Entity node.
+            var c2 = await tx.RunAsync(
+                "CREATE FULLTEXT INDEX entity_name IF NOT EXISTS FOR (e:Entity) ON EACH [e.name]").ConfigureAwait(false);
+            await c2.ConsumeAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     public async Task UpsertEntityAsync(GraphEntity entity, CancellationToken cancellationToken = default)
@@ -33,9 +48,13 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
             ["name"] = entity.Name,
             ["type"] = entity.Type,
         };
-        await session.RunAsync(
-            "MERGE (e:Entity { id: $id }) SET e += $props, e:`" + Sanitize(entity.Type) + "`",
-            new { id = entity.Id, props }).ConfigureAwait(false);
+        await session.ExecuteWriteAsync(async tx =>
+        {
+            var cursor = await tx.RunAsync(
+                "MERGE (e:Entity { id: $id }) SET e += $props, e:`" + Sanitize(entity.Type) + "`",
+                new { id = entity.Id, props }).ConfigureAwait(false);
+            await cursor.ConsumeAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     public async Task UpsertRelationAsync(GraphRelation relation, CancellationToken cancellationToken = default)
@@ -43,10 +62,14 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(relation);
         await using var session = _driver.AsyncSession();
         var rel = Sanitize(relation.Type);
-        await session.RunAsync(
-            $"MATCH (a:Entity {{ id: $from }}), (b:Entity {{ id: $to }}) " +
-            $"MERGE (a)-[r:`{rel}`]->(b) SET r += $props",
-            new { from = relation.FromId, to = relation.ToId, props = relation.Properties }).ConfigureAwait(false);
+        await session.ExecuteWriteAsync(async tx =>
+        {
+            var cursor = await tx.RunAsync(
+                $"MATCH (a:Entity {{ id: $from }}), (b:Entity {{ id: $to }}) " +
+                $"MERGE (a)-[r:`{rel}`]->(b) SET r += $props",
+                new { from = relation.FromId, to = relation.ToId, props = relation.Properties }).ConfigureAwait(false);
+            await cursor.ConsumeAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<IReadOnlyDictionary<string, object>>> QueryAsync(
@@ -56,15 +79,23 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
         await using var session = _driver.AsyncSession();
-        var cursor = await session.RunAsync(query, parameters as object ?? new { }).ConfigureAwait(false);
-        var results = new List<IReadOnlyDictionary<string, object>>();
-        await foreach (var record in cursor.ConfigureAwait(false))
+        return await session.ExecuteReadAsync(async tx =>
         {
-            results.Add(record.Values.ToDictionary(kv => kv.Key, kv => kv.Value));
-        }
-        return results;
+            var cursor = await tx.RunAsync(query, parameters as object ?? new { }).ConfigureAwait(false);
+            var results = new List<IReadOnlyDictionary<string, object>>();
+            await foreach (var record in cursor.ConfigureAwait(false))
+            {
+                results.Add(record.Values.ToDictionary(kv => kv.Key, kv => kv.Value));
+            }
+            return (IReadOnlyList<IReadOnlyDictionary<string, object>>)results;
+        }).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Seeds the traversal via the <c>entity_name</c> full-text index
+    /// (created in <see cref="EnsureSchemaExistsAsync"/>) instead of a
+    /// label-wide scan, then expands up to <paramref name="maxHops"/> hops.
+    /// </summary>
     public async Task<IReadOnlyList<GraphEntity>> TraverseAsync(
         IEnumerable<string> entityNames,
         int maxHops,
@@ -80,7 +111,7 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
 
         var cypher =
             $"UNWIND $names AS name " +
-            $"MATCH (start:Entity) WHERE toLower(start.name) CONTAINS toLower(name) " +
+            $"CALL db.index.fulltext.queryNodes('entity_name', name) YIELD node AS start " +
             $"OPTIONAL MATCH (start)-[*1..{maxHops}]-(neighbour:Entity) " +
             $"WITH collect(DISTINCT start) + collect(DISTINCT neighbour) AS nodes " +
             $"UNWIND nodes AS n RETURN DISTINCT n";

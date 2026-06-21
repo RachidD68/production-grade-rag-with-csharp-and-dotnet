@@ -27,6 +27,14 @@ public sealed class DocumentToGraphPipeline
         ArgumentNullException.ThrowIfNull(chunks);
         await _store.EnsureSchemaExistsAsync(cancellationToken).ConfigureAwait(false);
         var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Entity resolution: a deliberately simple lowercase-exact dedup. It only
+        // collapses names that match case-insensitively character-for-character,
+        // so "Ada", "Ada Lovelace", and "A. Lovelace" fragment into separate
+        // nodes — silently breaking multi-hop recall when a later chunk refers to
+        // the same real-world entity by a different surface form. The production
+        // upgrade is a fuzzy/token-match or vector-similarity resolver
+        // (see the LazyGraphRAG indexer in Ch 17). Kept simple here on purpose.
         var nameToId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var chunk in chunks)
