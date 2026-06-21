@@ -30,7 +30,7 @@ public sealed class RerankerTests
     }
 
     [Fact]
-    public async Task CrossEncoderReranker_resorts_by_LLM_relevance_score()
+    public async Task LlmRerank_resorts_by_LLM_relevance_score()
     {
         // The stub returns a different score per candidate based on text.
         var chat = new StubChatClient(prompt =>
@@ -45,7 +45,7 @@ public sealed class RerankerTests
             }
             return "0.10";
         });
-        var reranker = new CrossEncoderReranker(chat);
+        var reranker = new LlmRerank(chat);
 
         var input = new[]
         {
@@ -77,6 +77,90 @@ public sealed class RerankerTests
         Assert.Equal(20, inner.LastTopK);
     }
 
+    [Fact]
+    public async Task NoOpReranker_returns_empty_for_empty_candidates()
+    {
+        var reranker = new NoOpReranker();
+        var output = await reranker.RerankAsync("q", Array.Empty<RetrievalResult>(), topK: 5);
+        Assert.Empty(output);
+    }
+
+    [Fact]
+    public async Task OnnxCrossEncoderReranker_returns_empty_for_empty_candidates()
+    {
+        var reranker = new OnnxCrossEncoderReranker(new StubCrossEncoderModel(_ => 0.5f));
+        var output = await reranker.RerankAsync("q", Array.Empty<RetrievalResult>(), topK: 5);
+        Assert.Empty(output);
+    }
+
+    [Fact]
+    public async Task RerankingMiddleware_minScore_floor_drops_below_threshold()
+    {
+        var input = new[]
+        {
+            new RetrievalResult(Chunk("hi",  "x"), 0.9),
+            new RetrievalResult(Chunk("mid", "x"), 0.2),
+            new RetrievalResult(Chunk("lo",  "x"), 0.05),
+        };
+        var inner = new ConstantRetriever(input);
+        // A reranker that passes the candidate scores through unchanged.
+        var reranker = new ScoreEchoReranker();
+        var middleware = new RerankingMiddleware(inner, reranker, candidateCount: 20, minScore: 0.3);
+
+        var output = await middleware.RetrieveAsync("q", topK: 5);
+
+        Assert.Single(output);
+        Assert.Equal("hi", output[0].Chunk.DocumentId);
+    }
+
+    [Fact]
+    public async Task RerankingMiddleware_minScore_above_all_returns_empty()
+    {
+        var input = new[]
+        {
+            new RetrievalResult(Chunk("hi",  "x"), 0.9),
+            new RetrievalResult(Chunk("mid", "x"), 0.2),
+            new RetrievalResult(Chunk("lo",  "x"), 0.05),
+        };
+        var inner = new ConstantRetriever(input);
+        var reranker = new ScoreEchoReranker();
+        var middleware = new RerankingMiddleware(inner, reranker, candidateCount: 20, minScore: 0.95);
+
+        var output = await middleware.RetrieveAsync("q", topK: 5);
+
+        Assert.Empty(output);
+    }
+
+    [Fact]
+    public async Task OnnxCrossEncoderReranker_resorts_by_model_score()
+    {
+        // Deterministic stub: score by the document text, ignoring the query.
+        var model = new StubCrossEncoderModel(text => text switch
+        {
+            "about vacation policy" => 0.95f,
+            "about remote work" => 0.30f,
+            _ => 0.10f,
+        });
+        var reranker = new OnnxCrossEncoderReranker(model);
+
+        var input = new[]
+        {
+            new RetrievalResult(Chunk("remote", "about remote work"),     0.99),
+            new RetrievalResult(Chunk("vac",    "about vacation policy"), 0.10),
+            new RetrievalResult(Chunk("none",   "about something else"),  0.50),
+        };
+
+        // topK truncation: ask for 2, expect the two highest model scores in order.
+        var output = await reranker.RerankAsync("vacation days", input, topK: 2);
+
+        Assert.Equal(2, output.Count);
+        Assert.Equal("vac", output[0].Chunk.DocumentId);
+        Assert.Equal("remote", output[1].Chunk.DocumentId);
+        // Alignment: the surviving scores are the model's, mapped onto the right chunks.
+        Assert.Equal(0.95f, output[0].Score, precision: 5);
+        Assert.Equal(0.30f, output[1].Score, precision: 5);
+    }
+
     private sealed class ConstantRetriever : IRetriever
     {
         private readonly IReadOnlyList<RetrievalResult> _results;
@@ -89,5 +173,28 @@ public sealed class RerankerTests
             IReadOnlyList<RetrievalResult> r = _results.Take(topK).ToList();
             return Task.FromResult(r);
         }
+    }
+
+    // A reranker that echoes each candidate's incoming score, only truncating to
+    // topK — lets a test drive RerankingMiddleware with known scores.
+    private sealed class ScoreEchoReranker : IReranker
+    {
+        public string Implementation => "score-echo";
+        public Task<IReadOnlyList<RetrievalResult>> RerankAsync(
+            string query, IReadOnlyList<RetrievalResult> candidates, int topK, CancellationToken ct = default)
+        {
+            IReadOnlyList<RetrievalResult> r =
+                [.. candidates.OrderByDescending(c => c.Score).Take(topK)];
+            return Task.FromResult(r);
+        }
+    }
+
+    private sealed class StubCrossEncoderModel : ICrossEncoderModel
+    {
+        private readonly Func<string, float> _scoreOf;
+        public StubCrossEncoderModel(Func<string, float> scoreOf) { _scoreOf = scoreOf; }
+        public string ModelId => "stub-cross-encoder";
+        public IReadOnlyList<float> Score(string query, IReadOnlyList<string> documents)
+            => [.. documents.Select(_scoreOf)];
     }
 }

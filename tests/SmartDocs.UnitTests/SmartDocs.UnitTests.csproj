@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Reranking\SmartDocs.Reranking.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Reranking.Onnx\SmartDocs.Reranking.Onnx.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Generation\SmartDocs.Generation.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Routing\SmartDocs.Routing.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Mcp\SmartDocs.Mcp.csproj" />

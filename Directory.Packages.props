@@ -80,6 +80,12 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
   </ItemGroup>
 
+  <ItemGroup Label="DI composition (Scrutor — Ch 9 reranking decorator)">
+    <!-- Scrutor.Decorate wraps the registered IRetriever with RerankingMiddleware
+         so reranking is transparent to RagPipeline (Ch 9 DI wiring). -->
+    <PackageVersion Include="Scrutor" Version="7.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Roslyn (used by CodeFileChunker in Ch 4)">
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
   </ItemGroup>
@@ -99,6 +105,11 @@
          pulls 9.0.4 which has GHSA-73j8-2gch-69rq (high severity). -->
     <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.9" />
     <PackageVersion Include="OllamaSharp" Version="5.4.25" />
+    <!-- ONNX Runtime for the self-hosted cross-encoder reranker (Ch 9). Pulls
+         native binaries, so it is referenced ONLY by the opt-in
+         SmartDocs.Reranking.Onnx adapter — never by the lean core reranking
+         library — keeping the native dependency off every other consumer. -->
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
   </ItemGroup>
 
   <ItemGroup Label="Vector and graph databases">

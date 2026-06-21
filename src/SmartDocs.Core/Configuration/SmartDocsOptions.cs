@@ -12,4 +12,7 @@ public sealed class SmartDocsOptions
 
     /// <summary>Ingestion-time chunking settings (Chapter 4).</summary>
     public IngestionOptions Ingestion { get; set; } = new();
+
+    /// <summary>Reranking settings — mode, candidate pool, and relevance floor (Chapter 9).</summary>
+    public RerankingOptions Reranking { get; set; } = new();
 }

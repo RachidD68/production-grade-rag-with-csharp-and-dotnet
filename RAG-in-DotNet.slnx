@@ -4,6 +4,7 @@
     <Project Path="samples/Ch02_SkToMafMigration/Ch02_SkToMafMigration.csproj" />
     <Project Path="samples/Ch03_EmbeddingBenchmarks/Ch03_EmbeddingBenchmarks.csproj" />
     <Project Path="samples/Ch04_ChunkingPlayground/Ch04_ChunkingPlayground.csproj" />
+    <Project Path="samples/Ch09_RerankingEval/Ch09_RerankingEval.csproj" />
     <Project Path="samples/Ch14_AzureAiSearchAgent/Ch14_AzureAiSearchAgent.csproj" />
     <Project Path="samples/Ch15_ChatMessageInjector/Ch15_ChatMessageInjector.csproj" />
     <Project Path="samples/Ch20_GroundTruthEval/Ch20_GroundTruthEval.csproj" />
@@ -27,6 +28,7 @@
     <Project Path="src/SmartDocs.Mcp/SmartDocs.Mcp.csproj" />
     <Project Path="src/SmartDocs.Operations/SmartDocs.Operations.csproj" />
     <Project Path="src/SmartDocs.Performance/SmartDocs.Performance.csproj" />
+    <Project Path="src/SmartDocs.Reranking.Onnx/SmartDocs.Reranking.Onnx.csproj" />
     <Project Path="src/SmartDocs.Reranking/SmartDocs.Reranking.csproj" />
     <Project Path="src/SmartDocs.Retrieval/SmartDocs.Retrieval.csproj" />
     <Project Path="src/SmartDocs.Routing/SmartDocs.Routing.csproj" />

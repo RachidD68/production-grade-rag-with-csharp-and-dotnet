@@ -15,7 +15,7 @@
 | 6 | `SmartDocs.Retrieval/VectorStores/`: `InMemoryVectorStore`, `QdrantVectorStore` (real-Qdrant integration test passes); Azure AI Search adapter deferred to Phase 7 |
 | 7 | `SmartDocs.Ingestion/Indexing/`: 4 `IIndexingStrategy` impls + `IndexingPipelineBuilder` |
 | 8 | `SmartDocs.Retrieval/`: `DenseRetriever`, `SparseRetriever` (in-process BM25 — see ADR-0009), `RrfMerger`, `HybridRetriever` |
-| 9 | `SmartDocs.Reranking/`: `IReranker`, `NoOpReranker`, `CohereReranker`, `CrossEncoderReranker` (LLM-as-judge stand-in for BGE), `RerankingMiddleware` |
+| 9 | `SmartDocs.Reranking/`: `IReranker`, `NoOpReranker`, `CohereReranker`, `LlmRerank` (LLM-as-judge), `OnnxCrossEncoderReranker` + `ICrossEncoderModel` (real cross-encoder, ONNX adapter in `SmartDocs.Reranking.Onnx`), `RerankingMiddleware` |
 | 10 | `SmartDocs.Generation/`: `PromptTemplateEngine` (token-budget aware, `[Source N]` markers), `RagPipeline` (one-shot + streaming); `SmartDocs.Api/`: `POST /api/ask` + `POST /api/ask/stream` via ASP.NET Core 10's first-class `TypedResults.ServerSentEvents` |
 
 ## Quality bar

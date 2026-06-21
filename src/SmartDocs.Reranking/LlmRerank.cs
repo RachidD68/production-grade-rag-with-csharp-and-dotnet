@@ -5,22 +5,24 @@ namespace SmartDocs.Reranking;
 
 /// <summary>
 /// LLM-as-judge reranker — asks an <see cref="IChatClient"/> to score each
-/// (query, candidate) pair on a 0..1 relevance scale, then re-sorts.
-/// Slower than Cohere/BGE but useful when no rerank API key is available
-/// and a chat model (Ollama llama3.2 fits) is reachable. Drop-in stand-in
-/// for the BGE Reranker v2 path described in Ch 9.
+/// (query, candidate) pair on a 0..1 relevance scale, then re-sorts. Slower
+/// and pricier per query than a dedicated cross-encoder, but useful when no
+/// rerank API key is available and a chat model (Ollama llama3.2 fits) is
+/// reachable. For a genuine self-hosted cross-encoder, see
+/// <see cref="OnnxCrossEncoderReranker"/> backed by an
+/// <see cref="ICrossEncoderModel"/> (Ch 9, ONNX adapter).
 /// </summary>
-public sealed class CrossEncoderReranker : IReranker
+public sealed class LlmRerank : IReranker
 {
     private readonly IChatClient _chat;
 
-    public CrossEncoderReranker(IChatClient chat)
+    public LlmRerank(IChatClient chat)
     {
         ArgumentNullException.ThrowIfNull(chat);
         _chat = chat;
     }
 
-    public string Implementation => "cross-encoder-llm";
+    public string Implementation => "llm-as-judge";
 
     public async Task<IReadOnlyList<RetrievalResult>> RerankAsync(
         string query,

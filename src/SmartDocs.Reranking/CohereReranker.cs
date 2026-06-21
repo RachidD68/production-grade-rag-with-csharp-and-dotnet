@@ -6,10 +6,11 @@ using SmartDocs.Core.Documents;
 namespace SmartDocs.Reranking;
 
 /// <summary>
-/// Cohere Rerank API (<c>rerank-3</c> family, 2026 default in the book).
-/// Sends the query + candidate texts to Cohere and replaces the score
-/// with the API's relevance_score. Requires <c>COHERE_API_KEY</c> in the
-/// environment OR an explicit constructor argument.
+/// Cohere Rerank API (<c>rerank-v3.5</c>, the single multilingual model in the
+/// v3.5 line and the 2026 default in the book). Sends the query + candidate
+/// texts to Cohere's v2 Rerank endpoint and replaces the score with the API's
+/// relevance_score. Requires <c>COHERE_API_KEY</c> in the environment OR an
+/// explicit constructor argument.
 /// </summary>
 public sealed class CohereReranker : IReranker
 {
@@ -18,7 +19,7 @@ public sealed class CohereReranker : IReranker
     private readonly string _model;
     private readonly string _apiKey;
 
-    public CohereReranker(HttpClient http, string apiKey, string model = "rerank-3-multilingual-v3.0")
+    public CohereReranker(HttpClient http, string apiKey, string model = "rerank-v3.5")
     {
         ArgumentNullException.ThrowIfNull(http);
         ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
@@ -72,7 +73,13 @@ public sealed class CohereReranker : IReranker
         [property: JsonPropertyName("model")] string Model,
         [property: JsonPropertyName("query")] string Query,
         [property: JsonPropertyName("documents")] IReadOnlyList<string> Documents,
-        [property: JsonPropertyName("top_n")] int TopN);
+        [property: JsonPropertyName("top_n")] int TopN,
+        // Cohere's per-document token budget (API default 4096). Left null by
+        // default and omitted from the wire payload so the API applies its own
+        // default; only serialised when explicitly set.
+        [property: JsonPropertyName("max_tokens_per_doc")]
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        int? MaxTokensPerDoc = null);
 
     private sealed record RerankResponse(
         [property: JsonPropertyName("results")] IReadOnlyList<RerankResult> Results);
