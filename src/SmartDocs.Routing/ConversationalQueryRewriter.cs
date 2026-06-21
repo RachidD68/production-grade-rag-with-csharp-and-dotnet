@@ -12,6 +12,7 @@ namespace SmartDocs.Routing;
 public sealed class ConversationalQueryRewriter
 {
     private readonly IChatClient _chat;
+    private readonly int _maxHistoryTurns;
 
     private const string Prompt =
         """
@@ -26,10 +27,20 @@ public sealed class ConversationalQueryRewriter
         {1}
         """;
 
-    public ConversationalQueryRewriter(IChatClient chat)
+    /// <summary>Create the rewriter.</summary>
+    /// <param name="chat">The chat model that performs the rewrite.</param>
+    /// <param name="maxHistoryTurns">
+    /// How many of the most recent history turns to include in the prompt
+    /// (default 8). Older turns are dropped so the prompt stays bounded as a
+    /// conversation grows; summarising the dropped context instead of discarding
+    /// it is a Chapter 12 exercise.
+    /// </param>
+    public ConversationalQueryRewriter(IChatClient chat, int maxHistoryTurns = 8)
     {
         ArgumentNullException.ThrowIfNull(chat);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxHistoryTurns);
         _chat = chat;
+        _maxHistoryTurns = maxHistoryTurns;
     }
 
     public async Task<string> RewriteAsync(
@@ -45,6 +56,11 @@ public sealed class ConversationalQueryRewriter
         {
             return latestUserMessage;
         }
+
+        // Bound the prompt: keep only the most recent N turns. Older context is
+        // dropped (rather than summarised — that is a Ch 12 exercise) so the
+        // prompt size stays constant no matter how long the conversation runs.
+        historyList = historyList.TakeLast(_maxHistoryTurns).ToList();
 
         var historyText = string.Join("\n", historyList.Select(h => $"{h.Role}: {h.Text}"));
         var prompt = Prompt

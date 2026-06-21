@@ -1,8 +1,8 @@
 using System.Collections.Frozen;
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
+using SmartDocs.Core.Abstractions;
 
 namespace SmartDocs.Routing;
 
@@ -23,6 +23,15 @@ public sealed class RuleBasedRouter : IQueryRouter
         ["product-catalog"] = ["pricing", "tier", "feature", "starter", "team", "business", "enterprise", "specification"],
         ["release-notes-tickets"] = ["release notes", "release", "ticket", "regression", "hotfix", "support ticket"],
     }.ToFrozenDictionary(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The canonical six-silo set this corpus is partitioned into. The keys of
+    /// <see cref="SiloKeywords"/> are the single source of truth; other routers
+    /// (e.g. <see cref="LlmClassifierRouter"/>) validate model output against
+    /// <see cref="KnownSilos"/> so a hallucinated silo name never reaches a retriever.
+    /// </summary>
+    public static FrozenSet<string> KnownSilos { get; } =
+        SiloKeywords.Keys.ToFrozenSet(StringComparer.Ordinal);
 
     public Task<RoutingDecision> RouteAsync(string query, CancellationToken cancellationToken = default)
     {
@@ -61,12 +70,27 @@ public sealed class RuleBasedRouter : IQueryRouter
 /// <summary>
 /// LLM-based router. Asks the chat model to classify the query into one
 /// or more silos with a confidence score. Slower than rules but handles
-/// novel phrasings.
+/// novel phrasings. Distinct from <see cref="SemanticRouter"/>, which routes
+/// by embedding similarity and never calls a chat model.
 /// </summary>
-public sealed class SemanticRouter : IQueryRouter
+/// <remarks>
+/// The model is free-form text and can hallucinate silo names that do not
+/// exist. <see cref="RouteAsync"/> therefore validates every returned silo
+/// against <see cref="RuleBasedRouter.KnownSilos"/> and drops the rest; if the
+/// model returns <em>only</em> unknown silos the decision collapses to an empty
+/// silo set with low confidence.
+/// </remarks>
+public sealed class LlmClassifierRouter : IQueryRouter
 {
     private readonly IChatClient _chat;
-    public string Strategy => "semantic";
+    public string Strategy => "llm-classifier";
+
+    /// <summary>
+    /// Canonical silo names the model is allowed to return. Reuses
+    /// <see cref="RuleBasedRouter.KnownSilos"/> so both routers share one source
+    /// of truth for the six-silo taxonomy.
+    /// </summary>
+    private static readonly FrozenSet<string> KnownSilos = RuleBasedRouter.KnownSilos;
 
     private const string Prompt =
         """
@@ -79,7 +103,7 @@ public sealed class SemanticRouter : IQueryRouter
         Query: {0}
         """;
 
-    public SemanticRouter(IChatClient chat)
+    public LlmClassifierRouter(IChatClient chat)
     {
         ArgumentNullException.ThrowIfNull(chat);
         _chat = chat;
@@ -95,8 +119,22 @@ public sealed class SemanticRouter : IQueryRouter
         try
         {
             var parsed = JsonSerializer.Deserialize<SemanticDecision>(json) ?? new SemanticDecision();
+            // E2: drop any silo the model invented; only the canonical six are routable.
+            var validSilos = (parsed.Silos ?? Array.Empty<string>())
+                .Where(KnownSilos.Contains)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (validSilos.Length == 0)
+            {
+                // The model returned nothing usable (empty or all-hallucinated).
+                return new RoutingDecision(
+                    Silos: Array.Empty<string>(),
+                    Confidence: 0,
+                    Reasoning: "no valid silos",
+                    Strategy: Strategy);
+            }
             return new RoutingDecision(
-                Silos: parsed.Silos ?? Array.Empty<string>(),
+                Silos: validSilos,
                 Confidence: parsed.Confidence,
                 Reasoning: parsed.Reasoning ?? string.Empty,
                 Strategy: Strategy);
@@ -124,27 +162,170 @@ public sealed class SemanticRouter : IQueryRouter
 }
 
 /// <summary>
-/// Multi-source router — runs the rule-based router first, falls back to
-/// the semantic router if rule-based confidence is below
-/// <see cref="ConfidenceThreshold"/> (default 0.5). Returns the union of
-/// silos when both routers agree.
+/// Embedding-based semantic router. Holds a small set of exemplar phrases per
+/// silo, embeds them once (lazily), and routes a query to the silo(s) whose
+/// exemplars are most similar to the query embedding.
+/// </summary>
+/// <remarks>
+/// Unlike <see cref="LlmClassifierRouter"/>, this router never calls a chat
+/// model: routing is a single query embedding plus cosine-similarity maths, so
+/// it is markedly cheaper and lower-latency. It is deterministic given a
+/// deterministic <see cref="IEmbeddingService"/>. Exemplar phrases mirror the
+/// themes of <see cref="RuleBasedRouter"/>'s keyword tables.
+/// </remarks>
+public sealed class SemanticRouter : IQueryRouter
+{
+    private readonly IEmbeddingService _embeddings;
+    private readonly double _threshold;
+    private readonly FrozenDictionary<string, string[]> _exemplars;
+    private readonly Lazy<Task<FrozenDictionary<string, ReadOnlyMemory<float>[]>>> _exemplarVectors;
+
+    public string Strategy => "semantic-embedding";
+
+    /// <summary>
+    /// Default per-silo exemplar phrases. Three to five short phrases drawn from
+    /// each silo's domain, paralleling <see cref="RuleBasedRouter"/>'s keyword
+    /// themes. Embedded once and cached.
+    /// </summary>
+    private static readonly FrozenDictionary<string, string[]> DefaultExemplars =
+        new Dictionary<string, string[]>
+        {
+            ["hr-policies"] = ["vacation and leave policy", "parental leave", "remote work policy", "sick days and probation"],
+            ["technical-docs"] = ["api endpoint documentation", "service deployment runbook", "architecture decision record", "rate limit configuration"],
+            ["financial-reports"] = ["quarterly revenue report", "annual budget and forecast", "fiscal year operating margin", "Q3 financial results"],
+            ["legal-contracts"] = ["non-disclosure agreement", "contract termination clause", "statement of work", "software license agreement"],
+            ["product-catalog"] = ["pricing tiers and features", "enterprise plan specification", "starter and team plans", "product feature comparison"],
+            ["release-notes-tickets"] = ["latest release notes", "support ticket and hotfix", "regression in a release", "bug fix changelog"],
+        }.ToFrozenDictionary(StringComparer.Ordinal);
+
+    /// <summary>Create the embedding router.</summary>
+    /// <param name="embeddings">The embedding service used to vectorise the query and exemplars.</param>
+    /// <param name="similarityThreshold">
+    /// Cosine-similarity floor (default 0.35). Silos whose best exemplar clears
+    /// this floor are selected; if none clear it, the single top silo is returned.
+    /// </param>
+    /// <param name="exemplars">
+    /// Optional override of the per-silo exemplar phrases. Defaults to a built-in
+    /// set mirroring the rule-based keyword themes.
+    /// </param>
+    public SemanticRouter(
+        IEmbeddingService embeddings,
+        double similarityThreshold = 0.35,
+        IReadOnlyDictionary<string, string[]>? exemplars = null)
+    {
+        ArgumentNullException.ThrowIfNull(embeddings);
+        _embeddings = embeddings;
+        _threshold = similarityThreshold;
+        _exemplars = exemplars is null
+            ? DefaultExemplars
+            : exemplars.ToFrozenDictionary(StringComparer.Ordinal);
+        // Lazy<Task<...>> embeds every exemplar exactly once, on first RouteAsync,
+        // and caches the resulting vectors. Concurrent first callers await the
+        // same task rather than re-embedding.
+        _exemplarVectors = new Lazy<Task<FrozenDictionary<string, ReadOnlyMemory<float>[]>>>(
+            EmbedExemplarsAsync,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public async Task<RoutingDecision> RouteAsync(string query, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+
+        var exemplarVectors = await _exemplarVectors.Value.ConfigureAwait(false);
+        var queryVector = await _embeddings.EmbedQueryAsync(query, cancellationToken).ConfigureAwait(false);
+
+        var scores = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var (silo, vectors) in exemplarVectors)
+        {
+            var best = 0.0;
+            foreach (var vector in vectors)
+            {
+                best = Math.Max(best, Cosine(queryVector.Span, vector.Span));
+            }
+            scores[silo] = best;
+        }
+
+        if (scores.Count == 0)
+        {
+            return new RoutingDecision(Array.Empty<string>(), 0, "no exemplars configured", Strategy);
+        }
+
+        var (topSilo, topScore) = scores.OrderByDescending(kv => kv.Value).First();
+        var selected = scores.Where(kv => kv.Value >= _threshold).Select(kv => kv.Key).ToArray();
+        if (selected.Length == 0)
+        {
+            // Nothing cleared the threshold — fall back to the single best silo so
+            // the query is still routed somewhere rather than dropped.
+            selected = [topSilo];
+        }
+
+        var confidence = Math.Clamp(topScore, 0.0, 1.0);
+        var reasoning = FormattableString.Invariant($"top silo {topSilo} at similarity {topScore:F3}");
+        return new RoutingDecision(
+            Silos: selected,
+            Confidence: confidence,
+            Reasoning: reasoning,
+            Strategy: Strategy);
+    }
+
+    private async Task<FrozenDictionary<string, ReadOnlyMemory<float>[]>> EmbedExemplarsAsync()
+    {
+        var result = new Dictionary<string, ReadOnlyMemory<float>[]>(StringComparer.Ordinal);
+        foreach (var (silo, phrases) in _exemplars)
+        {
+            var vectors = new ReadOnlyMemory<float>[phrases.Length];
+            for (var i = 0; i < phrases.Length; i++)
+            {
+                vectors[i] = await _embeddings.EmbedQueryAsync(phrases[i]).ConfigureAwait(false);
+            }
+            result[silo] = vectors;
+        }
+        return result.ToFrozenDictionary(StringComparer.Ordinal);
+    }
+
+    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
+    {
+        if (a.Length != b.Length || a.Length == 0)
+        {
+            return 0.0;
+        }
+        double dot = 0, magA = 0, magB = 0;
+        for (var i = 0; i < a.Length; i++)
+        {
+            dot += a[i] * b[i];
+            magA += a[i] * a[i];
+            magB += b[i] * b[i];
+        }
+        if (magA <= 0 || magB <= 0)
+        {
+            return 0.0;
+        }
+        return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
+    }
+}
+
+/// <summary>
+/// Multi-source router — runs the rule-based router first, falls back to the
+/// secondary router (the LLM-classifier or embedding router) if rule-based
+/// confidence is below <see cref="ConfidenceThreshold"/> (default 0.5). Returns
+/// the union of silos when both routers contribute.
 /// </summary>
 public sealed class MultiSourceRouter : IQueryRouter
 {
     private readonly IQueryRouter _ruleBased;
-    private readonly IQueryRouter _semantic;
+    private readonly IQueryRouter _llmFallback;
     public double ConfidenceThreshold { get; }
 
-    public MultiSourceRouter(IQueryRouter ruleBased, IQueryRouter semantic, double confidenceThreshold = 0.5)
+    public MultiSourceRouter(IQueryRouter ruleBased, IQueryRouter llmFallback, double confidenceThreshold = 0.5)
     {
         ArgumentNullException.ThrowIfNull(ruleBased);
-        ArgumentNullException.ThrowIfNull(semantic);
+        ArgumentNullException.ThrowIfNull(llmFallback);
         _ruleBased = ruleBased;
-        _semantic = semantic;
+        _llmFallback = llmFallback;
         ConfidenceThreshold = confidenceThreshold;
     }
 
-    public string Strategy => $"multi({_ruleBased.Strategy}+{_semantic.Strategy})";
+    public string Strategy => $"multi({_ruleBased.Strategy}+{_llmFallback.Strategy})";
 
     public async Task<RoutingDecision> RouteAsync(string query, CancellationToken cancellationToken = default)
     {
@@ -153,12 +334,12 @@ public sealed class MultiSourceRouter : IQueryRouter
         {
             return ruleDecision with { Strategy = Strategy };
         }
-        var semantic = await _semantic.RouteAsync(query, cancellationToken).ConfigureAwait(false);
-        var union = ruleDecision.Silos.Union(semantic.Silos, StringComparer.Ordinal).ToArray();
+        var fallback = await _llmFallback.RouteAsync(query, cancellationToken).ConfigureAwait(false);
+        var union = ruleDecision.Silos.Union(fallback.Silos, StringComparer.Ordinal).ToArray();
         return new RoutingDecision(
             Silos: union,
-            Confidence: Math.Max(ruleDecision.Confidence, semantic.Confidence),
-            Reasoning: $"rule={ruleDecision.Reasoning}; semantic={semantic.Reasoning}",
+            Confidence: Math.Max(ruleDecision.Confidence, fallback.Confidence),
+            Reasoning: $"rule={ruleDecision.Reasoning}; fallback={fallback.Reasoning}",
             Strategy: Strategy);
     }
 }

@@ -45,6 +45,20 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<SelfQueryRetriever>();
         services.AddSingleton<IRetriever>(sp => sp.GetRequiredService<SelfQueryRetriever>());
 
+        // Query routing (Ch 12). The concrete routers are registered so a host can
+        // resolve a specific strategy, and a MultiSourceRouter (rule-first, with an
+        // LLM-classifier fallback) is wired as the default IQueryRouter. The
+        // LLM-classifier and conversational rewriter need a registered IChatClient;
+        // the embedding SemanticRouter needs a registered IEmbeddingService. Both
+        // are host concerns supplied by the composition root.
+        services.TryAddSingleton<RuleBasedRouter>();
+        services.TryAddSingleton<LlmClassifierRouter>();
+        services.TryAddSingleton<SemanticRouter>();
+        services.TryAddSingleton<ConversationalQueryRewriter>();
+        services.TryAddSingleton<IQueryRouter>(sp => new MultiSourceRouter(
+            sp.GetRequiredService<RuleBasedRouter>(),
+            sp.GetRequiredService<LlmClassifierRouter>()));
+
         return services;
     }
 
