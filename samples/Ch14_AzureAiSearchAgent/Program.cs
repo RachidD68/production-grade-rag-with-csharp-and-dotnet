@@ -1,14 +1,13 @@
-// Ch 14 — Azure AI Search RAG agent (MAF 1.6.1 reference pattern)
+// Ch 14 — Azure AI Search RAG agent (MAF 1.10.0 reference pattern)
 //
-// This sample mirrors the official Microsoft Agent Framework 1.6.1 RAG
-// reference: an Azure-hosted vector store fronted by a ChatClientAgent.
-// We use a stand-in IRetriever that returns canned chunks so the sample
-// runs offline; the production wiring (Azure AI Search VectorStore +
-// EmbeddingGenerator + hybrid keyword retrieval) is documented in
-// SmartDocs.Retrieval.AzureSearch — see Chapter 14 of the book.
+// This sample mirrors the Microsoft Agent Framework 1.10.0 RAG reference: an
+// Azure-hosted hybrid store fronted by a ChatClientAgent. We use a stand-in
+// IRetriever that returns canned chunks so the sample runs offline; the
+// production retriever is SmartDocs.Retrieval.Hybrid.AzureAiSearchHybridRetriever
+// (single-store vector + keyword hybrid, RRF fused server-side) — see Chapter 14.
 //
 // What this sample demonstrates:
-//   1. A ChatClientAgent wired to a single vector-search tool.
+//   1. A ChatClientAgent wired to a single hybrid-search tool.
 //   2. The agent autonomously decides when to call the tool.
 //   3. Inline [Source N] citation pattern in the answer.
 //
@@ -59,8 +58,9 @@ return 0;
 
 // ── Stubs so the sample runs offline. ─────────────────────────────────────
 // Replace BuildStubChatClient() with an IChatClient over Ollama / OpenAI /
-// Azure OpenAI in real deployments; replace CannedAzureSearchRetriever with
-// the production Azure AI Search adapter from SmartDocs.Retrieval.AzureSearch.
+// Azure OpenAI in real deployments; replace CannedAzureSearchRetriever with the
+// production retriever SmartDocs.Retrieval.Hybrid.AzureAiSearchHybridRetriever
+// (registered via services.AddSmartDocsHybridRetriever("azure", options)).
 
 static IChatClient BuildStubChatClient()
 {

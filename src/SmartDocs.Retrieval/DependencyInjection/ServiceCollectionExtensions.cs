@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using SmartDocs.Core.Abstractions;
+using SmartDocs.Retrieval.Hybrid;
 using SmartDocs.Retrieval.VectorStores;
 
 namespace SmartDocs.Retrieval.DependencyInjection;
@@ -115,4 +116,143 @@ public static class ServiceCollectionExtensions
             new AzureAiSearchVectorStore(endpoint, indexName, vectorSize, credential));
         return services;
     }
+
+    /// <summary>
+    /// Registers a single-store hybrid <see cref="IRetriever"/> (Chapter 14)
+    /// selected by <paramref name="backend"/>. Each backend's database performs
+    /// dense + sparse + RRF fusion internally:
+    /// <list type="bullet">
+    ///   <item><description><c>postgres</c> → <see cref="PostgresHybridRetriever"/> (pgvector <c>&lt;=&gt;</c> + FTS <c>ts_rank_cd</c>, RRF-in-SQL).</description></item>
+    ///   <item><description><c>qdrant</c> → <see cref="QdrantHybridRetriever"/> (Query API prefetch legs fused with <c>Fusion.Rrf</c>).</description></item>
+    ///   <item><description><c>azure</c> → <see cref="AzureAiSearchHybridRetriever"/> (vector + keyword fused by Azure's RRF).</description></item>
+    /// </list>
+    /// The <see cref="IEmbeddingService"/> used to embed the query is resolved
+    /// from the container, so register one first. Backend matching is
+    /// case-insensitive; an unrecognised value throws
+    /// <see cref="InvalidOperationException"/>. Composable with the
+    /// <c>AddSmartDocs…VectorStore</c> registrations — this adds the hybrid
+    /// <see cref="IRetriever"/>, it does not replace any <see cref="IVectorStore"/>.
+    /// </summary>
+    /// <param name="services">The DI container being built.</param>
+    /// <param name="backend">One of <c>postgres</c>, <c>qdrant</c>, or <c>azure</c> (case-insensitive).</param>
+    /// <param name="options">The backend connection configuration. Exactly one backend's fields are read.</param>
+    /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
+    /// <exception cref="InvalidOperationException">The <paramref name="backend"/> is not a known backend, or its required options are missing.</exception>
+    public static IServiceCollection AddSmartDocsHybridRetriever(
+        this IServiceCollection services,
+        string backend,
+        HybridRetrieverOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentException.ThrowIfNullOrWhiteSpace(backend);
+        ArgumentNullException.ThrowIfNull(options);
+
+        switch (backend.Trim().ToLowerInvariant())
+        {
+            case "postgres":
+                var connectionString = options.PostgresConnectionString
+                    ?? throw new InvalidOperationException(
+                        "Hybrid backend 'postgres' requires HybridRetrieverOptions.PostgresConnectionString.");
+                services.AddSingleton<IRetriever>(sp =>
+                    new PostgresHybridRetriever(
+                        sp.GetRequiredService<IEmbeddingService>(),
+                        connectionString,
+                        options.PostgresOptions));
+                break;
+
+            case "qdrant":
+                services.AddSingleton<IRetriever>(sp =>
+                    new QdrantHybridRetriever(
+                        new QdrantClient(options.QdrantHost, options.QdrantPort),
+                        sp.GetRequiredService<IEmbeddingService>(),
+                        options.QdrantCollectionName ?? throw new InvalidOperationException(
+                            "Hybrid backend 'qdrant' requires HybridRetrieverOptions.QdrantCollectionName."),
+                        options.QdrantDenseVectorName,
+                        options.QdrantSparseVectorName));
+                break;
+
+            case "azure":
+                var endpoint = options.AzureEndpoint
+                    ?? throw new InvalidOperationException(
+                        "Hybrid backend 'azure' requires HybridRetrieverOptions.AzureEndpoint.");
+                var indexName = options.AzureIndexName
+                    ?? throw new InvalidOperationException(
+                        "Hybrid backend 'azure' requires HybridRetrieverOptions.AzureIndexName.");
+                if (options.AzureTokenCredential is { } tokenCredential)
+                {
+                    services.AddSingleton<IRetriever>(sp =>
+                        new AzureAiSearchHybridRetriever(
+                            endpoint, indexName, tokenCredential,
+                            sp.GetRequiredService<IEmbeddingService>(),
+                            semanticConfigurationName: options.AzureSemanticConfigurationName));
+                }
+                else if (options.AzureKeyCredential is { } keyCredential)
+                {
+                    services.AddSingleton<IRetriever>(sp =>
+                        new AzureAiSearchHybridRetriever(
+                            endpoint, indexName, keyCredential,
+                            sp.GetRequiredService<IEmbeddingService>(),
+                            semanticConfigurationName: options.AzureSemanticConfigurationName));
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "Hybrid backend 'azure' requires either AzureKeyCredential or AzureTokenCredential.");
+                }
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown hybrid backend '{backend}'. Expected 'postgres', 'qdrant', or 'azure'.");
+        }
+
+        return services;
+    }
+}
+
+/// <summary>
+/// Backend connection configuration for
+/// <see cref="ServiceCollectionExtensions.AddSmartDocsHybridRetriever"/>. Only
+/// the fields belonging to the selected backend are read; the rest are ignored.
+/// </summary>
+public sealed class HybridRetrieverOptions
+{
+    // ── postgres ──────────────────────────────────────────────────────────
+    /// <summary>The Npgsql connection string for the <c>postgres</c> backend.</summary>
+    public string? PostgresConnectionString { get; init; }
+
+    /// <summary>Optional table/column configuration for the <c>postgres</c> backend.</summary>
+    public PostgresHybridOptions? PostgresOptions { get; init; }
+
+    // ── qdrant ────────────────────────────────────────────────────────────
+    /// <summary>Qdrant host for the <c>qdrant</c> backend. Default <c>localhost</c>.</summary>
+    public string QdrantHost { get; init; } = "localhost";
+
+    /// <summary>Qdrant gRPC port for the <c>qdrant</c> backend. Default 6334.</summary>
+    public int QdrantPort { get; init; } = 6334;
+
+    /// <summary>The hybrid collection name for the <c>qdrant</c> backend.</summary>
+    public string? QdrantCollectionName { get; init; }
+
+    /// <summary>The named dense vector for the <c>qdrant</c> backend. Default <c>dense</c>.</summary>
+    public string QdrantDenseVectorName { get; init; } = "dense";
+
+    /// <summary>The named sparse (IDF-modified) vector for the <c>qdrant</c> backend. Default <c>sparse</c>.</summary>
+    public string QdrantSparseVectorName { get; init; } = "sparse";
+
+    // ── azure ─────────────────────────────────────────────────────────────
+    /// <summary>The Azure AI Search endpoint for the <c>azure</c> backend.</summary>
+    public Uri? AzureEndpoint { get; init; }
+
+    /// <summary>The index name for the <c>azure</c> backend.</summary>
+    public string? AzureIndexName { get; init; }
+
+    /// <summary>An admin/query key for the <c>azure</c> backend. Mutually exclusive with <see cref="AzureTokenCredential"/>.</summary>
+    public AzureKeyCredential? AzureKeyCredential { get; init; }
+
+    /// <summary>An Entra ID credential for the <c>azure</c> backend. Takes precedence over <see cref="AzureKeyCredential"/>.</summary>
+    public TokenCredential? AzureTokenCredential { get; init; }
+
+    /// <summary>Optional semantic-configuration name for the <c>azure</c> backend (off when <see langword="null"/>).</summary>
+    public string? AzureSemanticConfigurationName { get; init; }
 }

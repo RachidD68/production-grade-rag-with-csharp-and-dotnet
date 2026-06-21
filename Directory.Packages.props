@@ -120,6 +120,12 @@
          surface (VectorSearchField, HnswAlgorithmConfiguration, VectorizedQuery)
          is what AzureAiSearchVectorStore targets. -->
     <PackageVersion Include="Azure.Search.Documents" Version="12.0.0" />
+    <!-- Postgres + pgvector hybrid adapter (Ch 14). Npgsql 10.x is the
+         net10-aligned major; the PostgresHybridRetriever runs the RRF-in-SQL
+         CTE (websearch_to_tsquery + ts_rank_cd + the <=> cosine operator) over
+         a raw connection — the embedding is passed as a ::vector literal, so no
+         separate pgvector binding package is required. -->
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup Label="Resilience">

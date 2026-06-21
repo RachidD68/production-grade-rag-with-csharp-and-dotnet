@@ -12,6 +12,10 @@
     <PackageReference Include="Qdrant.Client" />
     <PackageReference Include="Azure.Search.Documents" />
     <PackageReference Include="Neo4j.Driver" />
+    <!-- Ch 14: Postgres + pgvector single-store hybrid adapter
+         (PostgresHybridRetriever). The version is pinned centrally in
+         Directory.Packages.props (Npgsql 10.0.3). -->
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
   <ItemGroup>
