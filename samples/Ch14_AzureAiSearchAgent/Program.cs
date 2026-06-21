@@ -130,7 +130,7 @@ sealed class CannedAzureSearchRetriever : IRetriever
                 DocumentId: "contoso-rag-arch",
                 ChunkIndex: 1,
                 Text:
-                    "Each query is wrapped in a ChatClientAgent (Microsoft Agent Framework 1.6.1). " +
+                    "Each query is wrapped in a ChatClientAgent (Microsoft Agent Framework 1.10.0). " +
                     "The agent calls the azure_search tool, receives chunk text plus IDs, and emits " +
                     "a final answer that preserves [Source N] markers for downstream grounding.",
                 StartCharOffset: 280,
