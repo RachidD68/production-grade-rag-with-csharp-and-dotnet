@@ -10,4 +10,13 @@
     <PackageReference Include="Microsoft.Extensions.AI" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Security\SmartDocs.Security.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Generation\SmartDocs.Generation.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Mcp\SmartDocs.Mcp.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Operations\SmartDocs.Operations.csproj" />
+  </ItemGroup>
+
 </Project>

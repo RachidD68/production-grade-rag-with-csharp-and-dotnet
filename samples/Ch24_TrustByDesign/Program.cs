@@ -1,272 +1,258 @@
 // Chapter 24 — Trust by Design.
 //
-// Demonstrates citation auditing and model card generation for RAG systems.
-// Implements a CitationAuditor that traces a citation back through the RAG
-// chain to its source, and a ModelCardGenerator that produces a JSON model
-// card from system configuration.
+// End-to-end "trust by design" walkthrough wired to the real production types in
+// src/SmartDocs.Operations/Compliance/*. The flow mirrors the chapter:
+//
+//   1. Ingest a small corpus that includes one user's content, signing each
+//      chunk's provenance with the Ch 23 HMAC signer.
+//   2. Run a couple of grounded queries and log them to the EU AI Act audit log.
+//   3. Honour a GDPR Article 17 erasure request via the Ch 22 deletion pipeline.
+//   4. Show the signed ErasureReceipt (chapter JSON shape) and verify it.
+//   5. Trace a historical answer back to its sources with CitationAuditor,
+//      proving each cited chunk's provenance signature.
+//   6. Render and sign the live model card.
+//
+// Runs fully offline (stub IChatClient + InMemoryVectorStore) and exits 0.
 //
 // Run:
 //   dotnet run --project samples/Ch24_TrustByDesign
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-// Simulate a RAG chain that produced a citation.
-var chain = new List<ChainStep>
-{
-    new(
-        StepId: "step-001",
-        StepType: "ingestion",
-        Input: "HR_Policy_2026.pdf",
-        Output: "Extracted 42 paragraphs from PDF",
-        Timestamp: DateTimeOffset.Parse("2026-05-10T09:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
-        Metadata: new() { ["source_hash"] = "sha256:a1b2c3d4", ["page_range"] = "1-15" }),
-
-    new(
-        StepId: "step-002",
-        StepType: "chunking",
-        Input: "Paragraph 7: 'Employees are entitled to 25 vacation days per year...'",
-        Output: "chunk-007: 'Employees are entitled to 25 vacation days per year. Unused days carry over up to 5.'",
-        Timestamp: DateTimeOffset.Parse("2026-05-10T09:00:05Z", System.Globalization.CultureInfo.InvariantCulture),
-        Metadata: new() { ["chunk_id"] = "chunk-007", ["strategy"] = "paragraph-level" }),
-
-    new(
-        StepId: "step-003",
-        StepType: "embedding",
-        Input: "chunk-007",
-        Output: "vector stored at index 007 in Qdrant collection 'hr-policies'",
-        Timestamp: DateTimeOffset.Parse("2026-05-10T09:00:06Z", System.Globalization.CultureInfo.InvariantCulture),
-        Metadata: new() { ["model"] = "text-embedding-3-small", ["dimensions"] = "1536" }),
-
-    new(
-        StepId: "step-004",
-        StepType: "retrieval",
-        Input: "Query: 'How many vacation days do I get?'",
-        Output: "Retrieved chunk-007 with score 0.94",
-        Timestamp: DateTimeOffset.Parse("2026-05-17T14:30:00Z", System.Globalization.CultureInfo.InvariantCulture),
-        Metadata: new() { ["score"] = "0.94", ["rank"] = "1" }),
-
-    new(
-        StepId: "step-005",
-        StepType: "generation",
-        Input: "Context: chunk-007 | Query: 'How many vacation days do I get?'",
-        Output: "You are entitled to 25 vacation days per year. [Source: HR_Policy_2026.pdf, p.3]",
-        Timestamp: DateTimeOffset.Parse("2026-05-17T14:30:01Z", System.Globalization.CultureInfo.InvariantCulture),
-        Metadata: new() { ["model"] = "gpt-4o", ["temperature"] = "0.1", ["tokens_used"] = "287" }),
-};
+using System.Text;
+using SmartDocs.Core.Documents;
+using SmartDocs.Generation.Citations;
+using SmartDocs.Mcp;
+using SmartDocs.Operations;
+using SmartDocs.Operations.Compliance;
+using SmartDocs.Retrieval.VectorStores;
+using SmartDocs.Security;
 
 Console.WriteLine("=== Ch24: Trust by Design ===");
 Console.WriteLine();
 
-// --- Citation Auditor ---
+// --- Shared keys / signers (would live in Key Vault in production) ---
 
-Console.WriteLine("--- Citation Auditor ---");
-Console.WriteLine();
+var provenanceKey = Encoding.UTF8.GetBytes("ch24-provenance-key");
+var receiptKey = Encoding.UTF8.GetBytes("ch24-receipt-key");
+var cardKey = Encoding.UTF8.GetBytes("ch24-model-card-key");
 
-var trace = AuditCitation(
-    citationId: "cite-001",
-    claimedSource: "HR_Policy_2026.pdf",
-    chain: chain);
+var signer = new HmacProvenanceSigner(provenanceKey);
 
-Console.WriteLine($"Citation ID:     {trace.CitationId}");
-Console.WriteLine($"Claimed Source:  {trace.ClaimedSource}");
-Console.WriteLine($"Chain Length:    {trace.Chain.Count} steps");
-Console.WriteLine($"Verified:        {trace.IsVerified}");
-Console.WriteLine($"Note:            {trace.VerificationNote}");
-Console.WriteLine();
-Console.WriteLine("  Audit Chain:");
-foreach (var step in trace.Chain)
+// --- 1. Ingest a small corpus, including one user's (alice's) content ---
+
+DocumentMetadata Meta(string id, string title, string author) => new(
+    Id: id,
+    Silo: "hr-policies",
+    Department: "HR",
+    Office: "Montreal",
+    ConfidentialityLevel: "Internal",
+    DocumentType: "Policy",
+    FiscalYear: 2026,
+    Author: author,
+    LastModified: new DateOnly(2026, 5, 10),
+    Title: title);
+
+DocumentChunk SignedChunk(string docId, int index, string text, DocumentMetadata meta)
 {
-    Console.WriteLine($"    [{step.Timestamp:HH:mm:ss}] {step.StepType,-12} -> {Truncate(step.Output, 60)}");
+    var chunk = new DocumentChunk(
+        ChunkId: $"{docId}#{index}",
+        DocumentId: docId,
+        ChunkIndex: index,
+        Text: text,
+        StartCharOffset: 0,
+        EndCharOffset: text.Length,
+        Metadata: meta);
+    return chunk with { Provenance = signer.Sign(chunk) };
 }
 
-Console.WriteLine();
+var hrMeta = Meta("hr-001", "Vacation Policy 2026", "HR Team");
+var aliceMeta = Meta("usr-alice", "Alice — Accommodation Request", "alice@contoso.com");
 
-// --- Model Card Generator ---
-
-Console.WriteLine("--- Model Card Generator ---");
-Console.WriteLine();
-
-var config = new SystemConfig(
-    SystemName: "SmartDocs RAG",
-    Version: "2.1.0",
-    Provider: "Azure OpenAI",
-    ModelId: "gpt-4o",
-    MaxContextTokens: 128_000,
-    Temperature: "0.1",
-    VectorDatabase: "Qdrant",
-    EmbeddingModel: "text-embedding-3-small",
-    ChunkSize: 512,
-    TopK: 5,
-    RerankingEnabled: true);
-
-var modelCard = GenerateModelCard(config);
-
-var jsonOptions = new JsonSerializerOptions
+var corpus = new List<DocumentChunk>
 {
-    WriteIndented = true,
-    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    SignedChunk("hr-001", 0, "Employees are entitled to 25 vacation days per year. Unused days carry over up to 5.", hrMeta),
+    SignedChunk("hr-001", 1, "Vacation requests must be submitted at least two weeks in advance.", hrMeta),
+    SignedChunk("usr-alice", 0, "Alice requested a standing-desk accommodation effective March 2026.", aliceMeta),
 };
 
-var json = JsonSerializer.Serialize(modelCard, jsonOptions);
-Console.WriteLine("Generated Model Card (JSON):");
-Console.WriteLine(json);
+// Embed with a trivial deterministic embedder so the store is searchable offline.
+ReadOnlyMemory<float> Embed(string text)
+{
+    // 8-dim bag-of-chars hash; good enough to make cosine search deterministic.
+    var v = new float[8];
+    foreach (var ch in text)
+    {
+        v[ch % 8] += 1f;
+    }
+    var norm = MathF.Sqrt(v.Sum(x => x * x));
+    if (norm > 0)
+    {
+        for (var i = 0; i < v.Length; i++)
+        {
+            v[i] /= norm;
+        }
+    }
+    return v;
+}
 
+var store = new InMemoryVectorStore("hr-policies");
+await store.UpsertAsync(corpus.Select(c => new EmbeddedChunk(c, Embed(c.Text), "stub-embed")));
+
+var lookup = new InMemoryChunkLookup(corpus);
+var docStore = new InMemoryDocumentMetadataStore();
+docStore.Put(hrMeta);
+docStore.Put(aliceMeta);
+
+Console.WriteLine($"Ingested {corpus.Count} signed chunks across 2 documents (incl. one user's content).");
 Console.WriteLine();
+
+// --- 2. Run a grounded query and log it to the audit store ---
+
+var auditStore = new InMemoryAuditRecordStore();
+
+async Task RunQueryAsync(string queryId, string query, string answer, string citedChunkId, int sourceIndex)
+{
+    var hits = await store.SearchAsync(Embed(query), topK: 3);
+    var citedChunk = corpus.First(c => c.ChunkId == citedChunkId);
+    var citation = new Citation(
+        ClaimText: answer,
+        SourceIndex: sourceIndex,
+        ChunkId: citedChunk.ChunkId,
+        DocumentId: citedChunk.DocumentId,
+        Title: citedChunk.Metadata.Title,
+        Confidence: "SUPPORTED");
+
+    var entry = new AuditEntry(
+        TimestampUtc: DateTimeOffset.UtcNow,
+        Query: query,
+        RetrievedChunkIds: [.. hits.Select(h => h.Chunk.ChunkId)],
+        Response: answer,
+        Citations: [citation],
+        FaithfulnessScore: 0.95,
+        UserId: "user-42");
+    auditStore.Put(queryId, entry);
+    Console.WriteLine($"  [{queryId}] \"{query}\" -> {hits.Count} hits, logged with 1 citation.");
+}
+
+Console.WriteLine("--- Queries (logged to the EU AI Act audit store) ---");
+await RunQueryAsync("q-1001", "How many vacation days do I get?",
+    "You are entitled to 25 vacation days per year. [Source 1]", "hr-001#0", sourceIndex: 1);
+await RunQueryAsync("q-1002", "How far in advance must I request vacation?",
+    "Vacation requests must be submitted at least two weeks in advance. [Source 1]", "hr-001#1", sourceIndex: 1);
+Console.WriteLine();
+
+// --- 3. Honour a GDPR Article 17 erasure request for alice ---
+
+Console.WriteLine("--- GDPR erasure (Ch 22 pipeline) ---");
+var receivedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
+var graphDeleted = new List<string>();
+var pipeline = new GdprDeletionPipeline(
+    store,
+    id => { graphDeleted.Add(id); return Task.CompletedTask; },
+    _ => { });
+
+var deletion = await pipeline.DeleteAsync(
+    subjectId: "usr-alice",
+    chunkIds: ["usr-alice#0"],
+    graphEntityIds: ["entity-alice"],
+    requestedBy: "dpo@contoso.com");
+Console.WriteLine($"  Erased {deletion.ChunkIds.Count} chunk(s) + {deletion.GraphEntityIds.Count} graph entity(ies) for {deletion.SubjectId}.");
+Console.WriteLine();
+
+// --- 4. Signed erasure receipt (chapter JSON shape) ---
+
+Console.WriteLine("--- Signed erasure receipt ---");
+var receiptGen = new ErasureReceiptGenerator(ErasureReceiptGenerator.HmacSigner(receiptKey));
+var receipt = receiptGen.Build(
+    requestId: "req-7788",
+    receivedAt: receivedAt,
+    deletion: deletion,
+    redactedAuditRecords: 1);
+Console.WriteLine(ErasureReceiptGenerator.ToJson(receipt));
+Console.WriteLine($"  Receipt signature verifies: {receiptGen.Verify(receipt)}");
+Console.WriteLine();
+
+// --- 5. Trace a historical answer back to its sources ---
+
+Console.WriteLine("--- Citation auditor (trace q-1001) ---");
+var auditor = new CitationAuditor(auditStore, lookup, docStore, signer);
+var trace = await auditor.TraceAsync("q-1001");
+Console.WriteLine($"  Query: {trace.QueryId}");
+Console.WriteLine($"  Answer: {trace.Answer}");
+foreach (var step in trace.Chain)
+{
+    Console.WriteLine(
+        $"    [Source {step.CitationN}] {step.ChunkId} ({step.SourceUri}) " +
+        $"modified {step.ModifiedAt:yyyy-MM-dd} — signature valid: {step.SignatureValid}");
+}
+Console.WriteLine();
+
+// --- 6. Render and sign the live model card ---
+
+Console.WriteLine("--- Model card (live snapshot, signed) ---");
+var modelRegistry = new StubModelRegistry();
+var corpusInventory = new StubCorpusInventory();
+var profile = new ModelCardProfile(
+    SystemName: "SmartDocs RAG",
+    Version: "2.1.0",
+    IntendedUse: "Answer employee questions over internal HR, technical, and legal corpora with cited sources.",
+    PerformanceMetrics:
+    [
+        new MetricEntry("faithfulness", 0.94),
+        new MetricEntry("recall@5", 0.88),
+    ],
+    KnownFailureModes:
+    [
+        "May abstain when retrieval score is below threshold.",
+        "Does not read images or tables embedded in source PDFs.",
+    ],
+    OperationalControls:
+    [
+        "Every answer carries source citations and a logged audit trace.",
+        "PII detected at ingest is redacted before indexing.",
+        "Cross-tenant retrieval is blocked post-retrieval by the tenant guard.",
+    ]);
+
+var cardGen = new ModelCardGenerator(
+    modelRegistry,
+    corpusInventory,
+    new MarkdownModelCardRenderer(),
+    ModelCardGenerator.HmacSigner(cardKey),
+    profile);
+
+var (markdown, cardSignature) = await cardGen.GenerateSignedAsync();
+Console.WriteLine(markdown);
+Console.WriteLine($"Detached signature (HMAC-SHA256): {cardSignature}");
+Console.WriteLine();
+
 Console.WriteLine("Done.");
 return;
 
-// --- Citation Auditor implementation ---
+// --- Offline stub ports for the model card ---
 
-static AuditTrace AuditCitation(string citationId, string claimedSource, IReadOnlyList<ChainStep> chain)
+sealed class StubModelRegistry : IModelRegistry
 {
-    // Verify the chain: check that the source appears in the ingestion step.
-    var ingestionStep = chain.FirstOrDefault(s => s.StepType == "ingestion");
-    var sourceVerified = ingestionStep?.Input.Contains(claimedSource, StringComparison.OrdinalIgnoreCase) ?? false;
-
-    // Check chain integrity: each step's timestamp should be >= previous.
-    var temporallyValid = true;
-    for (var i = 1; i < chain.Count; i++)
+    public Task<IReadOnlyList<ModelEntry>> GetModelsAsync(CancellationToken cancellationToken = default)
     {
-        if (chain[i].Timestamp < chain[i - 1].Timestamp)
-        {
-            temporallyValid = false;
-            break;
-        }
-    }
-
-    // Check that retrieval score meets minimum threshold.
-    var retrievalStep = chain.FirstOrDefault(s => s.StepType == "retrieval");
-    var scoreValid = true;
-    if (retrievalStep is not null &&
-        retrievalStep.Metadata.TryGetValue("score", out var scoreStr) &&
-        float.TryParse(scoreStr, out var score))
-    {
-        scoreValid = score >= 0.7f;
-    }
-
-    var isVerified = sourceVerified && temporallyValid && scoreValid;
-    var note = isVerified
-        ? $"Citation verified: source '{claimedSource}' found in ingestion, chain temporally valid, retrieval score adequate."
-        : BuildFailureNote(sourceVerified, temporallyValid, scoreValid);
-
-    return new AuditTrace(citationId, claimedSource, chain, isVerified, note);
-}
-
-static string BuildFailureNote(bool sourceOk, bool temporalOk, bool scoreOk)
-{
-    var issues = new List<string>();
-    if (!sourceOk)
-    {
-        issues.Add("source not found in ingestion step");
-    }
-
-    if (!temporalOk)
-    {
-        issues.Add("chain timestamps out of order");
-    }
-
-    if (!scoreOk)
-    {
-        issues.Add("retrieval score below threshold (0.7)");
-    }
-
-    return $"Verification failed: {string.Join("; ", issues)}.";
-}
-
-// --- Model Card Generator implementation ---
-
-static ModelCard GenerateModelCard(SystemConfig config)
-{
-    return new ModelCard(
-        SystemName: config.SystemName,
-        Version: config.Version,
-        GeneratedAt: DateTimeOffset.UtcNow,
-        Model: new ModelDetails(
-            config.Provider,
-            config.ModelId,
-            config.MaxContextTokens,
-            config.Temperature),
-        Retrieval: new RetrievalDetails(
-            config.VectorDatabase,
-            config.EmbeddingModel,
-            config.ChunkSize,
-            config.TopK,
-            config.RerankingEnabled),
-        KnownLimitations:
+        IReadOnlyList<ModelEntry> models =
         [
-            "May hallucinate when retrieval score is below 0.7",
-            "Does not support multi-modal content (images, tables)",
-            "Maximum document size limited to 100 pages",
-            "Embedding model has 8191 token input limit per chunk",
-        ],
-        EthicalConsiderations:
-        [
-            "All generated answers include source citations for verifiability",
-            "System logs audit traces for every citation produced",
-            "PII detected in source documents is redacted before indexing",
-            "Model outputs are constrained by guardrails to prevent harmful content",
-        ]);
+            new("chat", "gpt-4o", "2024-11-20"),
+            new("embedding", "text-embedding-3-small", "1"),
+            new("reranker", "bge-reranker-v2-m3", "1.0"),
+        ];
+        return Task.FromResult(models);
+    }
 }
 
-static string Truncate(string s, int max) =>
-    s.Length <= max ? s : s[..max] + "...";
-
-// --- Domain types (must follow top-level statements) ---
-
-/// <summary>A single step in the RAG processing chain.</summary>
-sealed record ChainStep(
-    string StepId,
-    string StepType,
-    string Input,
-    string Output,
-    DateTimeOffset Timestamp,
-    Dictionary<string, string> Metadata);
-
-/// <summary>Full audit trace for a citation.</summary>
-sealed record AuditTrace(
-    string CitationId,
-    string ClaimedSource,
-    IReadOnlyList<ChainStep> Chain,
-    bool IsVerified,
-    string? VerificationNote);
-
-/// <summary>Model card describing a RAG system configuration.</summary>
-sealed record ModelCard(
-    string SystemName,
-    string Version,
-    DateTimeOffset GeneratedAt,
-    ModelDetails Model,
-    RetrievalDetails Retrieval,
-    IReadOnlyList<string> KnownLimitations,
-    IReadOnlyList<string> EthicalConsiderations);
-
-/// <summary>LLM model details for the model card.</summary>
-sealed record ModelDetails(
-    string Provider,
-    string ModelId,
-    int MaxContextTokens,
-    string TemperatureSetting);
-
-/// <summary>Retrieval configuration details for the model card.</summary>
-sealed record RetrievalDetails(
-    string VectorDatabase,
-    string EmbeddingModel,
-    int ChunkSize,
-    int TopK,
-    bool RerankingEnabled);
-
-/// <summary>System configuration for model card generation.</summary>
-sealed record SystemConfig(
-    string SystemName,
-    string Version,
-    string Provider,
-    string ModelId,
-    int MaxContextTokens,
-    string Temperature,
-    string VectorDatabase,
-    string EmbeddingModel,
-    int ChunkSize,
-    int TopK,
-    bool RerankingEnabled);
+sealed class StubCorpusInventory : ICorpusInventory
+{
+    public Task<IReadOnlyList<DataSourceEntry>> GetDataSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<DataSourceEntry> sources =
+        [
+            new("hr-policies", 42, "Internal"),
+            new("technical-docs", 118, "Internal"),
+            new("legal-contracts", 27, "Confidential"),
+        ];
+        return Task.FromResult(sources);
+    }
+}
