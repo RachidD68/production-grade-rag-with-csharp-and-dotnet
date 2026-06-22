@@ -8,6 +8,8 @@
     <Project Path="samples/Ch14_AzureAiSearchAgent/Ch14_AzureAiSearchAgent.csproj" />
     <Project Path="samples/Ch15_ChatMessageInjector/Ch15_ChatMessageInjector.csproj" />
     <Project Path="samples/Ch20_GroundTruthEval/Ch20_GroundTruthEval.csproj" />
+    <Project Path="samples/Ch20_MeaiEvaluation/Ch20_MeaiEvaluation.csproj" />
+    <Project Path="samples/Ch20_SafetyEval/Ch20_SafetyEval.csproj" />
     <Project Path="samples/Ch25_VerticalSliceVariant/Ch25_VerticalSliceVariant.csproj" />
     <Project Path="samples/Ch06_VectorDbComparison/Ch06_VectorDbComparison.csproj" />
     <Project Path="samples/Ch07_IndexingStrategies/Ch07_IndexingStrategies.csproj" />
@@ -46,5 +48,8 @@
   <Folder Name="/tools/" />
   <Folder Name="/tools/generate-dataset/">
     <Project Path="tools/generate-dataset/GenerateDataset.csproj" />
+  </Folder>
+  <Folder Name="/tools/eval-runner/">
+    <Project Path="tools/eval-runner/EvalRunner.csproj" />
   </Folder>
 </Solution>

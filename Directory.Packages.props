@@ -53,6 +53,18 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Microsoft.Extensions.AI.Evaluation — first-party .NET eval (Ch 20)">
+    <!-- Evaluation / Quality / Reporting ship stable on the 10.7.0 line; Safety
+         and NLP are preview-only on that line (user-approved). Some evaluators
+         (RTC, etc.) are gated behind the AIEVAL001 experimental diagnostic — the
+         eval sample projects add <NoWarn>$(NoWarn);AIEVAL001</NoWarn>. -->
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Safety" Version="10.7.0-preview.1.26309.5" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.7.0-preview.1.26309.5" />
+  </ItemGroup>
+
   <ItemGroup Label="LLM provider SDKs">
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="OpenAI" Version="2.11.0" />

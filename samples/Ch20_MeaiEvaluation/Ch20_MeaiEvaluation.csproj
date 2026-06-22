@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Samples.Ch20_MeaiEvaluation</RootNamespace>
+    <AssemblyName>Ch20_MeaiEvaluation</AssemblyName>
+    <!-- The NLP evaluators (BLEU) ship preview-only on the 10.7 line; nothing
+         in this project uses an [Experimental("AIEVAL001")] evaluator, but the
+         NoWarn keeps the door open for swapping in RTC without a build break. -->
+    <NoWarn>$(NoWarn);AIEVAL001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.NLP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+  </ItemGroup>
+
+</Project>
