@@ -36,8 +36,12 @@
     <Project Path="src/SmartDocs.Mcp/SmartDocs.Mcp.csproj" />
     <Project Path="src/SmartDocs.Operations/SmartDocs.Operations.csproj" />
     <Project Path="src/SmartDocs.Performance/SmartDocs.Performance.csproj" />
+    <Project Path="src/SmartDocs.Reranking.Cohere/SmartDocs.Reranking.Cohere.csproj" />
     <Project Path="src/SmartDocs.Reranking.Onnx/SmartDocs.Reranking.Onnx.csproj" />
     <Project Path="src/SmartDocs.Reranking/SmartDocs.Reranking.csproj" />
+    <Project Path="src/SmartDocs.Retrieval.AzureSearch/SmartDocs.Retrieval.AzureSearch.csproj" />
+    <Project Path="src/SmartDocs.Retrieval.Postgres/SmartDocs.Retrieval.Postgres.csproj" />
+    <Project Path="src/SmartDocs.Retrieval.Qdrant/SmartDocs.Retrieval.Qdrant.csproj" />
     <Project Path="src/SmartDocs.Retrieval/SmartDocs.Retrieval.csproj" />
     <Project Path="src/SmartDocs.Routing/SmartDocs.Routing.csproj" />
     <Project Path="src/SmartDocs.Security/SmartDocs.Security.csproj" />
@@ -54,5 +58,11 @@
   </Folder>
   <Folder Name="/tools/eval-runner/">
     <Project Path="tools/eval-runner/EvalRunner.csproj" />
+  </Folder>
+  <Folder Name="/tools/SmartDocs.SmokeTest/">
+    <Project Path="tools/SmartDocs.SmokeTest/SmartDocs.SmokeTest.csproj" />
+  </Folder>
+  <Folder Name="/tools/SmartDocs.LoadTest/">
+    <Project Path="tools/SmartDocs.LoadTest/SmartDocs.LoadTest.csproj" />
   </Folder>
 </Solution>

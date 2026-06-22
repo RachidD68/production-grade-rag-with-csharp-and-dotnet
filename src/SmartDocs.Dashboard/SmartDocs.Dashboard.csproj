@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- The Blazor dashboard is deployed, not published to NuGet. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
 </Project>

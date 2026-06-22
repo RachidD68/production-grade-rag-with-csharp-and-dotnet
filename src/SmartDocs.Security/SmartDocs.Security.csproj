@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Security defences for the SmartDocs RAG stack: input sanitization, heuristic prompt-injection detection, output PII redaction, tenant isolation, rate limiting, and embedding-anomaly detection — the building blocks behind the book's red-team suite.</Description>
+    <PackageTags>rag;security;prompt-injection;pii;redaction;tenant-isolation;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

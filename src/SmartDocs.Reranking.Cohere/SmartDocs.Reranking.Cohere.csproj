@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Cohere Rerank adapter for the SmartDocs RAG stack: CohereReranker calls Cohere's v2 Rerank API (rerank-v3.5) to re-score retrieved candidates. A framework-only HttpClient client — no Cohere SDK dependency. Install this package to rerank with Cohere.</Description>
+    <PackageTags>rag;reranking;cohere;relevance;retrieval;ai;llm;dotnet</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Real dependency edge onto the umbrella SmartDocs.Reranking package,
+         where CohereReranker lives (it implements the umbrella's IReranker and
+         the umbrella's reranking DI extension builds it for mode 'cohere').
+         Re-exported here via [TypeForwardedTo] so this Cohere-scoped package is
+         the install handle. Core supplies the DocumentChunk shape it reranks. -->
+    <ProjectReference Include="..\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\SmartDocs.Reranking\SmartDocs.Reranking.csproj" />
+  </ItemGroup>
+
+</Project>

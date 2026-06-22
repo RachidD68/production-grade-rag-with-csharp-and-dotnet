@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Offline and online evaluation for the SmartDocs RAG stack: retrieval metrics, groundedness/faithfulness judges, and ground-truth scoring used to measure answer quality and guard against regressions.</Description>
+    <PackageTags>rag;evaluation;metrics;groundedness;faithfulness;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

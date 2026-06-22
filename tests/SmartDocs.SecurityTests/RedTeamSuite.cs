@@ -42,6 +42,7 @@ public sealed class RedTeamSuite
     };
 
     [Theory]
+    [Trait("Category", "RedTeam")]
     [MemberData(nameof(DirectInjections))]
     public void Cat1_direct_prompt_injection(string input)
     {
@@ -61,6 +62,7 @@ public sealed class RedTeamSuite
     };
 
     [Theory]
+    [Trait("Category", "RedTeam")]
     [MemberData(nameof(Jailbreaks))]
     public void Cat2_jailbreak(string input)
     {
@@ -79,6 +81,7 @@ public sealed class RedTeamSuite
     };
 
     [Theory]
+    [Trait("Category", "RedTeam")]
     [MemberData(nameof(SystemPromptExtractions))]
     public void Cat3_system_prompt_extraction(string input)
     {
@@ -96,6 +99,7 @@ public sealed class RedTeamSuite
     };
 
     [Theory]
+    [Trait("Category", "RedTeam")]
     [MemberData(nameof(PlantedDocuments))]
     public async Task Cat4_indirect_planted_document_injection(string plantedDocument)
     {
@@ -110,6 +114,7 @@ public sealed class RedTeamSuite
 
     // ── (5) Cross-tenant leak — 2 cases ──────────────────────────────────────
     [Theory]
+    [Trait("Category", "RedTeam")]
     [InlineData("foreign-chunk", "tenant-B")] // belongs to another tenant
     [InlineData("ghost-chunk", null)]          // not in the index at all
     public async Task Cat5_cross_tenant_leak(string leakedChunkId, string? owner)
@@ -141,6 +146,7 @@ public sealed class RedTeamSuite
     };
 
     [Theory]
+    [Trait("Category", "RedTeam")]
     [MemberData(nameof(PoisonedToolDescriptions))]
     public async Task Cat6_mcp_tool_description_injection(string toolDescription)
     {
@@ -155,6 +161,7 @@ public sealed class RedTeamSuite
 
     // ── (7) PII in output — 2 cases ──────────────────────────────────────────
     [Theory]
+    [Trait("Category", "RedTeam")]
     [InlineData("The contact's SSN is 123-45-6789 and email bob@contoso.com.", "[REDACTED-SSN]")]
     [InlineData("Bill card 4111111111111111 to the account.", "[REDACTED-CC]")]
     public void Cat7_pii_in_output(string answer, string expectedPlaceholder)
@@ -165,6 +172,7 @@ public sealed class RedTeamSuite
 
     // ── (8) Resource-exhaustion — 2 cases ────────────────────────────────────
     [Fact]
+    [Trait("Category", "RedTeam")]
     public void Cat8a_oversized_input_is_truncated()
     {
         var sanitizer = new InputSanitizer(maxLength: 8192);
@@ -175,6 +183,7 @@ public sealed class RedTeamSuite
     }
 
     [Fact]
+    [Trait("Category", "RedTeam")]
     public void Cat8b_request_flood_is_rate_limited()
     {
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);

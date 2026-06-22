@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Query routing for the SmartDocs RAG stack: classifies an incoming query and dispatches it to the right retrieval strategy. A support package consumed by the MCP server and higher composition layers.</Description>
+    <PackageTags>rag;routing;query-classification;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

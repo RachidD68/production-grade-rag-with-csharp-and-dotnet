@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Document ingestion for the SmartDocs RAG stack: loaders, chunkers (recursive, semantic, code-aware via Roslyn, PDF via PdfPig), and the embedding pipeline that turns raw documents into embedded chunks ready for indexing.</Description>
+    <PackageTags>rag;ingestion;chunking;embeddings;pdf;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,274 @@
+name: deploy-prod
+
+# Production deployment pipeline for SmartDocs.
+#
+# Pipeline shape (Chapter 25): build -> eval-gate -> red-team-gate -> deploy -> smoke.
+#
+# Trigger policy:
+#   - push to main         -> auto-deploy to STAGING only (no human gate).
+#   - workflow_dispatch    -> manual deploy; target input selects staging or prod.
+#                             prod requires reviewer approval via the GitHub
+#                             Environment (see the `deploy-prod` job).
+#
+# The two deploy jobs are mutually exclusive: exactly one runs per pipeline,
+# selected by `github.event_name` and the dispatch `target` input.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target"
+        required: true
+        type: choice
+        default: prod
+        options:
+          - prod
+          - staging
+  push:
+    branches: [main]
+
+concurrency:
+  # Never let two prod/staging rollouts race each other.
+  group: deploy-prod-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  PROD_BASE_URL: "https://smartdocs.contoso.com"
+  STAGING_BASE_URL: "https://smartdocs-staging.contoso.com"
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. build: compile, test, publish the API + MCP host, pack the NuGet surface,
+  #    and hand the artifacts to the downstream gate and deploy jobs.
+  # ----------------------------------------------------------------------------
+  build:
+    name: build + publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore RAG-in-DotNet.slnx
+
+      - name: Test (Release)
+        run: dotnet test RAG-in-DotNet.slnx --configuration Release --no-restore
+
+      - name: Publish API
+        run: dotnet publish -c Release -o publish/api src/SmartDocs.Api
+
+      - name: Publish MCP host
+        run: dotnet publish -c Release -o publish/mcp src/SmartDocs.Mcp
+
+      - name: Pack NuGet packages
+        run: dotnet pack -c Release -o packages
+
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api
+          path: publish/api
+          if-no-files-found: error
+
+      - name: Upload MCP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp
+          path: publish/mcp
+          if-no-files-found: error
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: packages
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------------------
+  # 2. eval-gate: block the deploy if retrieval/faithfulness regress past the
+  #    allowed delta. Runs the REAL eval runner at tools/eval-runner.
+  # ----------------------------------------------------------------------------
+  eval-gate:
+    name: eval gate
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run eval gate
+        run: >-
+          dotnet run --project tools/eval-runner --
+          --gate
+          --recall-threshold 0.02
+          --faithfulness-threshold 0.03
+
+  # ----------------------------------------------------------------------------
+  # 3. red-team-gate: block the deploy if any adversarial / security case fails.
+  # ----------------------------------------------------------------------------
+  red-team-gate:
+    name: red-team gate
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run red-team suite
+        run: dotnet test RAG-in-DotNet.slnx --configuration Release --filter "Category=RedTeam"
+
+  # ----------------------------------------------------------------------------
+  # 4a. deploy-staging: auto on push to main, or via dispatch with target=staging.
+  #     No reviewers. Deploys staging Bicep parameters to rg-smartdocs-staging.
+  # ----------------------------------------------------------------------------
+  deploy-staging:
+    name: deploy (staging)
+    needs: [eval-gate, red-team-gate]
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: publish/api
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision infrastructure (Bicep)
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment group create \
+              -g rg-smartdocs-staging \
+              -f deploy/main.bicep \
+              -p deploy/parameters/staging.bicepparam
+
+      - name: Package API zip
+        run: |
+          cd publish/api
+          zip -r ../../api.zip .
+
+      - name: Deploy API to App Service
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp deploy \
+              -g rg-smartdocs-staging \
+              -n app-smartdocs-staging \
+              --type zip \
+              --src-path api.zip
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Post-deploy smoke test
+        run: >-
+          dotnet run --project tools/SmartDocs.SmokeTest --
+          --baseurl ${{ env.STAGING_BASE_URL }}
+
+  # ----------------------------------------------------------------------------
+  # 4b. deploy-prod: workflow_dispatch with target=prod only.
+  #     The `prod` GitHub Environment is configured with REQUIRED REVIEWERS,
+  #     so this job pauses for manual approval before any Azure call runs.
+  #     (Reviewers are set on the environment in repo Settings, not in YAML.)
+  # ----------------------------------------------------------------------------
+  deploy-prod:
+    name: deploy (prod)
+    needs: [eval-gate, red-team-gate]
+    if: >-
+      github.event_name == 'workflow_dispatch' && inputs.target == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: publish/api
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Provision infrastructure (Bicep)
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment group create \
+              -g rg-smartdocs-prod \
+              -f deploy/main.bicep \
+              -p deploy/parameters/prod.bicepparam
+
+      - name: Package API zip
+        run: |
+          cd publish/api
+          zip -r ../../api.zip .
+
+      - name: Deploy API to App Service
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az webapp deploy \
+              -g rg-smartdocs-prod \
+              -n app-smartdocs-prod \
+              --type zip \
+              --src-path api.zip
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Post-deploy smoke test
+        run: >-
+          dotnet run --project tools/SmartDocs.SmokeTest --
+          --baseurl ${{ env.PROD_BASE_URL }}

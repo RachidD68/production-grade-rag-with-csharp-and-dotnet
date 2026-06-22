@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Tools.SmokeTest</RootNamespace>
+    <AssemblyName>smoke-test</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Framework-only: HttpClient + System.Text.Json +
+         System.Net.ServerSentEvents.SseParser, all in the shared framework.
+         No package references, no project references. -->
+  </PropertyGroup>
+
+</Project>

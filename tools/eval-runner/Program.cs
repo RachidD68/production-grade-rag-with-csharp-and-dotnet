@@ -39,6 +39,16 @@ const int BootstrapSeed = 20_260_622; // fixed seed → reproducible confidence 
 string? baselinePath = GetOption(args, "--baseline");
 string? writeBaselinePath = GetOption(args, "--write-baseline");
 
+// --gate enforces the promotion gate in CI (Ch 25 deploy-prod.yml). With no
+// explicit --baseline it compares against the committed default baseline, and
+// blocks on a statistically-significant faithfulness regression OR an absolute
+// recall / faithfulness drop beyond the supplied thresholds.
+const string DefaultBaselinePath = "eval-baseline.json";
+bool gate = args.Contains("--gate");
+double recallThreshold = GetDoubleOption(args, "--recall-threshold") ?? 0.02;
+double faithfulnessThreshold = GetDoubleOption(args, "--faithfulness-threshold") ?? 0.03;
+string? effectiveBaseline = baselinePath ?? (gate ? DefaultBaselinePath : null);
+
 Console.WriteLine("=== eval-runner: offline retrieval + faithfulness eval with confidence intervals ===");
 Console.WriteLine();
 
@@ -106,15 +116,25 @@ Console.WriteLine();
 
 // --- Baseline comparison (paired). --------------------------------------------
 int exitCode = 0;
-if (baselinePath is not null)
+if (effectiveBaseline is not null)
 {
-    if (!File.Exists(baselinePath))
+    if (!File.Exists(effectiveBaseline))
     {
-        Console.Error.WriteLine($"Baseline file not found: {baselinePath}");
+        if (gate)
+        {
+            // First gated run with no committed baseline: bootstrap one and pass,
+            // so the gate becomes enforceable from the next run onward.
+            var seed = new EvalBaseline(perQueryFaithfulness, perQueryHit);
+            await File.WriteAllTextAsync(
+                effectiveBaseline, JsonSerializer.Serialize(seed, EvalJsonContext.Default.EvalBaseline));
+            Console.WriteLine($"GATE: PASS — no baseline at {effectiveBaseline}; bootstrapped one from this run.");
+            return 0;
+        }
+        Console.Error.WriteLine($"Baseline file not found: {effectiveBaseline}");
         return 2;
     }
     var baseline = JsonSerializer.Deserialize(
-        await File.ReadAllTextAsync(baselinePath), EvalJsonContext.Default.EvalBaseline);
+        await File.ReadAllTextAsync(effectiveBaseline), EvalJsonContext.Default.EvalBaseline);
     if (baseline is null || baseline.PerQueryFaithfulness.Count != perQueryFaithfulness.Count)
     {
         Console.Error.WriteLine("Baseline is malformed or its seed set size does not match the current run.");
@@ -144,6 +164,30 @@ if (baselinePath is not null)
     {
         Console.WriteLine("GATE: PASS — no significant regression (delta CI does not exclude zero in the wrong direction).");
     }
+
+    // Absolute-threshold gates (the --recall-threshold / --faithfulness-threshold
+    // the deploy workflow passes): block if either metric drops beyond tolerance.
+    if (gate)
+    {
+        double baselineHitRate = baseline.PerQueryHit.Count(h => h) / (double)baseline.PerQueryHit.Count;
+        double currentHitRate = (double)hitCount / cases.Count;
+        double baselineMeanFaithfulness = baseline.PerQueryFaithfulness.Average();
+        double recallDrop = baselineHitRate - currentHitRate;
+        double faithfulnessDrop = baselineMeanFaithfulness - meanFaithfulness;
+        Console.WriteLine(
+            $"GATE thresholds: hit-rate drop {recallDrop:+0.000;-0.000;0.000} (max {recallThreshold:F3}), " +
+            $"faithfulness drop {faithfulnessDrop:+0.000;-0.000;0.000} (max {faithfulnessThreshold:F3})");
+        if (recallDrop > recallThreshold)
+        {
+            Console.WriteLine("GATE: BLOCK — hit-rate regressed beyond --recall-threshold.");
+            exitCode = 1;
+        }
+        if (faithfulnessDrop > faithfulnessThreshold)
+        {
+            Console.WriteLine("GATE: BLOCK — faithfulness regressed beyond --faithfulness-threshold.");
+            exitCode = 1;
+        }
+    }
 }
 
 // --- Optionally persist this run as the new baseline. -------------------------
@@ -161,6 +205,15 @@ static string? GetOption(string[] args, string name)
 {
     var idx = Array.IndexOf(args, name);
     return idx >= 0 && idx + 1 < args.Length ? args[idx + 1] : null;
+}
+
+static double? GetDoubleOption(string[] args, string name)
+{
+    var raw = GetOption(args, name);
+    return raw is not null
+        && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
+        ? v
+        : null;
 }
 
 static string FormatCi(ConfidenceInterval ci, bool percent) =>

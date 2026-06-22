@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Inherit the solution-wide defaults. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Tooling consoles (smoke test, load test, dataset/eval helpers) are
+       runnable executables, never published packages. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

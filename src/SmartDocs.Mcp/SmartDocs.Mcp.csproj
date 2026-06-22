@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <!-- The MCP tool/resource surface is kept trim/AOT-clean so it can ship in
+         the Ch 21 AOT-published MCP server. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <Description>Model Context Protocol (MCP) server surface for the SmartDocs RAG stack: search/get-chunk/ingest/graph-search tools and chunk resources over the official ModelContextProtocol SDK, wired to the SmartDocs retrieval pipeline.</Description>
+    <PackageTags>rag;mcp;model-context-protocol;ai;llm;tools;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

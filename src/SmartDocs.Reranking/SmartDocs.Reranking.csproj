@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Reranking layer for the SmartDocs RAG stack: the IReranker abstraction, a no-op control, an LLM reranker, and the Scrutor-based reranking middleware that transparently decorates an IRetriever. Hosted cross-encoder (ONNX) and Cohere adapters ship as separate SmartDocs.Reranking.* packages.</Description>
+    <PackageTags>rag;reranking;cross-encoder;relevance;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

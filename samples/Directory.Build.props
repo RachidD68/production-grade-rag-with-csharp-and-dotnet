@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Inherit the solution-wide defaults. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Chapter samples are runnable demos, never published packages. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

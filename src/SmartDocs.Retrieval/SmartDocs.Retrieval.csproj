@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Retrieval engine for the SmartDocs RAG stack: dense/sparse/hybrid retrievers, Reciprocal Rank Fusion, MMR and context ordering, query-enhancement decorators (HyDE, RAG-Fusion, CRAG, step-back), graph/vectorless retrieval, and the in-memory vector store. Backend-specific adapters ship as separate SmartDocs.Retrieval.* packages.</Description>
+    <PackageTags>rag;retrieval;hybrid-search;rrf;reranking;vector-search;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

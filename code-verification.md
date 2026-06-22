@@ -179,3 +179,96 @@ dotnet run --project samples/Ch24_TrustByDesign
   `ExplanationPanel` takes an injected `IRiskClassifier` (satisfies "gated on an
   injected risk classification" and resolves `CA1822`).
 
+## Chapter 25 — Phase 2 (code)
+
+Production capstone companion code: a real, packable NuGet taxonomy (10 headline
+packages + 4 support packages), two deploy-time tools (smoke test + load test), a
+tagged-release publish workflow, and a real `Category=RedTeam` test selector.
+
+### Commands and results
+
+```
+# 1. Build (warnings-as-errors)
+dotnet build -c Release RAG-in-DotNet.slnx
+#   => Build succeeded. 0 Warning(s) / 0 Error(s).
+
+# 2. Tests
+dotnet test -c Release RAG-in-DotNet.slnx --no-build
+#   => All green. UnitTests 332 passed / 1 skipped, SecurityTests 67 passed,
+#      IntegrationTests 6 passed (= 405 passing, 1 skipped). EvalTests has no
+#      executable tests (pre-existing; no discoverer).
+
+# 3. RedTeam selector (must select exactly the 25 attack cases)
+dotnet test tests/SmartDocs.SecurityTests/SmartDocs.SecurityTests.csproj \
+    -c Release --no-build --filter "Category=RedTeam"
+#   => Passed! 25 passed / 0 failed (the 2 control facts are correctly excluded).
+
+# 4. Format
+dotnet format RAG-in-DotNet.slnx --verify-no-changes --severity warn
+#   => exit 0 (no formatting changes required).
+
+# 5. Banned-API grep (must be empty)
+grep -rEn "ChatAgent\b|IVectorStoreRecordCollection|CreateCollectionIfNotExistsAsync|VectorStoreRecord(Key|Data|Vector)|Microsoft\.Extensions\.AI\.Ollama" \
+    --include=*.cs --include=*.csproj --include=*.props .
+#   => no matches (empty).
+
+# 6. Pack every IsPackable project (no new package added to Directory.Packages.props)
+dotnet pack RAG-in-DotNet.slnx -c Release --no-build -o $TEMP/nupkgs
+#   => 14 .nupkg + 14 matching .snupkg, all with <readme> + Source Link repo/commit:
+#      10 headline  : SmartDocs.Core, .Ingestion, .Reranking.Onnx, .Reranking.Cohere,
+#                     .Retrieval.Qdrant, .Retrieval.Postgres, .Retrieval.AzureSearch,
+#                     .Mcp, .Evaluation, .Security
+#      4 support    : SmartDocs.Retrieval, .Reranking, .Routing, .Generation
+#      e.g. SmartDocs.Retrieval.Qdrant depends on SmartDocs.Core 1.0.0 +
+#           SmartDocs.Retrieval 1.0.0 (a real dependency edge).
+
+# 7. Tools run (framework-only; no NBomber, no new package)
+dotnet run --project tools/SmartDocs.SmokeTest -c Release -- --baseurl <dead-port>
+#   => parses --baseurl, runs /health + /api/ask/stream (SseParser) + /admin/metrics,
+#      fails gracefully, exits 1 on failed assertions.
+dotnet run --project tools/SmartDocs.LoadTest  -c Release -- --baseurl <dead-port> \
+    --rps 20 --minutes 0.05 --concurrency 10
+#   => open-loop scheduler + Channel + worker pool; reports p50/p95/p99, throughput,
+#      error rate; exits 1 when no request succeeds.
+```
+
+### Reconciliation notes (taxonomy → real repo)
+
+- **Leaf packages use type-forwarding, not a physical move.** Every adapter named
+  for a leaf package (`QdrantVectorStore`, `AzureAiSearchVectorStore` +
+  `AzureAiSearchHybridRetriever`, `PostgresHybridRetriever`, `CohereReranker`) is
+  referenced by its umbrella's own DI `ServiceCollectionExtensions` (and the Qdrant
+  /Azure adapters also depend on umbrella-internal helpers — `QdrantFilterCompiler`,
+  `AzureSearchFilterCompiler`, `SearchDocumentRecord`). A physical move would form a
+  leaf↔umbrella reference cycle. So each leaf is a **separate packable csproj that
+  references the umbrella** and re-exports the adapter via
+  `[assembly: TypeForwardedTo(...)]` (the spec's sanctioned fallback). This keeps the
+  umbrella DI, the unit/integration tests, and the Ch 6/9/14 samples building with
+  **zero edits**, while still producing a real package with a real dependency edge
+  (verified in the Qdrant nuspec: `dependency id="SmartDocs.Retrieval"`).
+- **Packaging defaults live in `Directory.Build.targets`, not `Directory.Build.props`.**
+  The defaults are gated on `'$(IsPackable)' == 'true'`, and a project sets
+  `IsPackable` in its body — evaluated AFTER the `.props` import but BEFORE the
+  `.targets` import. In `.props` the condition saw an empty `IsPackable` and the whole
+  block (README, Source Link, symbols) was silently skipped (the "missing a readme"
+  pack warning). Moving it to `.targets` fixed the `<readme>` nuspec element and the
+  snupkg emission. Source Link is SDK-native — **no `Microsoft.SourceLink.GitHub` pin**.
+- **`IsAotCompatible` deferred on `SmartDocs.Core` (TODO in the csproj), kept on
+  `SmartDocs.Mcp`.** Core's `AddSmartDocsCore` binds options from `IConfiguration`
+  and runs `ValidateDataAnnotations` (reflection → IL2026/IL3050), and Core pulls
+  `Azure.AI.OpenAI` + `OllamaSharp` (not AOT-annotated), so the flag fails the
+  warnings-as-errors build; annotating `AddSmartDocsCore` with
+  `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]` would cascade onto ~6 callers
+  (Api, samples, tests). Mcp's own surface is AOT-clean, so it keeps the flag (builds
+  0/0). Documented in `src/SmartDocs.Core/SmartDocs.Core.csproj`. The Ch 21 AOT MCP
+  sample is self-contained and does not depend on Core, so nothing regresses.
+- **Strong-naming deferred (TODO).** Not applied: the `Microsoft.Agents.AI.*` and
+  several other pinned transitive dependencies are not strong-named, so signing the
+  src libraries would not produce a fully strong-named closure and risks
+  `InternalsVisibleTo` public-key friction across the test projects. Left as a
+  reasoned TODO rather than break the green build — see below.
+- **No new NuGet package.** SmokeTest/LoadTest are framework-only (HttpClient,
+  System.Text.Json, `System.Net.ServerSentEvents.SseParser`, Channels, Stopwatch).
+  The publish workflow's SBOM step installs the CycloneDX *global tool* on the CI
+  runner (a build-time tool, not a `Directory.Packages.props` reference).
+

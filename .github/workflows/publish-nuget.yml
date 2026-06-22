@@ -1,0 +1,124 @@
+name: publish-nuget
+
+# Publishes the SmartDocs companion packages to nuget.org on a tagged GitHub
+# Release (Chapter 25). A release is the deliberate, human-gated act that turns a
+# green main build into shipped packages — so this never fires on push or PR.
+#
+# What ships: the 10 headline packages
+#   SmartDocs.Core, SmartDocs.Ingestion, SmartDocs.Reranking.Onnx,
+#   SmartDocs.Reranking.Cohere, SmartDocs.Retrieval.Qdrant,
+#   SmartDocs.Retrieval.Postgres, SmartDocs.Retrieval.AzureSearch,
+#   SmartDocs.Mcp, SmartDocs.Evaluation, SmartDocs.Security
+# plus the support packages the leaves take a real dependency edge on
+#   SmartDocs.Retrieval, SmartDocs.Reranking, SmartDocs.Routing, SmartDocs.Generation
+# All `IsPackable=true` projects pack in one pass via `dotnet pack` on the
+# solution; the non-packable apps/samples/tools/tests are skipped automatically.
+#
+# Secrets:
+#   NUGET_API_KEY            (required) push key for nuget.org
+#   NUGET_SIGN_CERT_BASE64   (optional) base64-encoded code-signing .pfx
+#   NUGET_SIGN_CERT_PASSWORD (optional) password for the .pfx
+# The signing step is a no-op when the cert secret is absent, so the workflow
+# stays green for forks and contributors who cannot sign.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  CONFIGURATION: Release
+  # CI builds get the deterministic + ContinuousIntegrationBuild treatment.
+  CI: "true"
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  publish:
+    name: pack + push to nuget.org
+    runs-on: ubuntu-latest
+    environment: nuget-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history so Source Link records an accurate commit.
+          fetch-depth: 0
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore RAG-in-DotNet.slnx
+
+      - name: Build (Release, warnings as errors)
+        run: dotnet build RAG-in-DotNet.slnx --configuration ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Pack (every IsPackable project → .nupkg + .snupkg)
+        run: >-
+          dotnet pack RAG-in-DotNet.slnx
+          --configuration ${{ env.CONFIGURATION }}
+          --no-build
+          --output ${{ runner.temp }}/nupkgs
+
+      - name: List produced packages
+        run: ls -l ${{ runner.temp }}/nupkgs
+
+      # ---------------------------------------------------------------------
+      # SBOM: generate a CycloneDX software bill of materials for the release.
+      # Uses the dotnet CycloneDX global tool (installed on the fly — it is a
+      # CI-only build artifact, NOT a project package reference, so it does not
+      # touch Directory.Packages.props). Non-fatal: never block a release on it.
+      # ---------------------------------------------------------------------
+      - name: Generate SBOM (CycloneDX)
+        continue-on-error: true
+        run: |
+          dotnet tool install --global CycloneDX
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet CycloneDX RAG-in-DotNet.slnx --output ${{ runner.temp }}/sbom --json
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: ${{ runner.temp }}/sbom
+          if-no-files-found: ignore
+
+      # ---------------------------------------------------------------------
+      # Optional package signing. Author Signing with an X.509 code-signing
+      # certificate. Skipped cleanly when the cert secret is not configured so
+      # the workflow does not fail for forks/contributors.
+      # ---------------------------------------------------------------------
+      - name: Sign packages (optional)
+        if: ${{ secrets.NUGET_SIGN_CERT_BASE64 != '' }}
+        env:
+          NUGET_SIGN_CERT_BASE64: ${{ secrets.NUGET_SIGN_CERT_BASE64 }}
+          NUGET_SIGN_CERT_PASSWORD: ${{ secrets.NUGET_SIGN_CERT_PASSWORD }}
+        run: |
+          echo "$NUGET_SIGN_CERT_BASE64" | base64 --decode > ${{ runner.temp }}/sign-cert.pfx
+          for pkg in ${{ runner.temp }}/nupkgs/*.nupkg; do
+            dotnet nuget sign "$pkg" \
+              --certificate-path ${{ runner.temp }}/sign-cert.pfx \
+              --certificate-password "$NUGET_SIGN_CERT_PASSWORD" \
+              --timestamper http://timestamp.digicert.com
+          done
+
+      - name: Skip-signing notice
+        if: ${{ secrets.NUGET_SIGN_CERT_BASE64 == '' }}
+        run: echo "::notice::NUGET_SIGN_CERT_BASE64 not set — publishing unsigned packages."
+
+      - name: Push to nuget.org (.nupkg + .snupkg)
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: >-
+          dotnet nuget push "${{ runner.temp }}/nupkgs/*.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

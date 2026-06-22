@@ -1,0 +1,30 @@
+{
+  "PerQueryFaithfulness": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.5,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "PerQueryHit": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ]
+}

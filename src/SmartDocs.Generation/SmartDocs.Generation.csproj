@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Answer generation for the SmartDocs RAG stack: the prompt-template engine, the grounded RagPipeline, and the citation/audit shapes that turn retrieved context into a cited answer. A support package consumed by the evaluation and operations layers.</Description>
+    <PackageTags>rag;generation;prompting;citations;ai;llm;dotnet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,6 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <!-- TODO (Ch 25 strong AOT): the *abstractions and document model* in this
+         package are trim/AOT-clean, but AddSmartDocsCore in
+         DependencyInjection/ServiceCollectionExtensions.cs binds
+         LlmClientOptions from IConfiguration and runs ValidateDataAnnotations —
+         both reflection-based and flagged IL2026/IL3050 — and the package also
+         pulls Azure.AI.OpenAI + OllamaSharp, which are not AOT-annotated.
+         Turning on <IsAotCompatible>true</IsAotCompatible> therefore fails the
+         warnings-as-errors build, and annotating AddSmartDocsCore with
+         [RequiresUnreferencedCode]/[RequiresDynamicCode] would cascade the
+         requirement onto ~6 callers (Api, samples, tests). Deferred to keep the
+         build green: split a reflection-free SmartDocs.Core.Abstractions before
+         claiming assembly-wide AOT compatibility. The Ch 21 AOT MCP sample is
+         already self-contained and does NOT depend on this package. -->
+    <Description>Core abstractions and primitives for the SmartDocs RAG stack: IRetriever, IVectorStore, IEmbeddingService, DocumentChunk/RetrievalResult, configuration, and token counting. The foundation every other SmartDocs package builds on.</Description>
+    <PackageTags>rag;retrieval-augmented-generation;ai;llm;embeddings;dotnet;abstractions</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

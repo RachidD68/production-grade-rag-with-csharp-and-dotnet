@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Tools.LoadTest</RootNamespace>
+    <AssemblyName>load-test</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Hand-rolled load generator: HttpClient + Channel + Task + Stopwatch,
+         all in the shared framework. NO NBomber or any load-test package. -->
+  </PropertyGroup>
+
+</Project>
