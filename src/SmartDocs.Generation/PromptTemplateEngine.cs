@@ -64,6 +64,17 @@ public sealed class PromptTemplateEngine
         return (BuildShellPrompt(question, contextBuilder.ToString()), used);
     }
 
+    /// <summary>
+    /// Assemble the prompt shell. The ordering here is deliberate and is the
+    /// .NET design rule for provider prompt caching (Ch 21, "Layer 0"): the
+    /// <em>stable</em> system/instruction prefix comes FIRST and the
+    /// <em>variable</em> retrieved context and user question come LAST. Azure
+    /// OpenAI / OpenAI cache the longest identical token prefix of a request
+    /// (≥1024 tokens, in 128-token steps), so keeping the durable instruction
+    /// block at the front lets every request reuse that cached prefix and only
+    /// pay full price for the tail that actually changes. Interpolating the
+    /// question early would poison the prefix and defeat the cache.
+    /// </summary>
     private static string BuildShellPrompt(string question, string contextPlaceholder) =>
         $"""
         You are a helpful assistant for the Contoso Intelligent Systems knowledge base.

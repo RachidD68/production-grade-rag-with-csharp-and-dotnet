@@ -26,7 +26,7 @@ public enum RagStreamEventKind { Sources, Token, Done, Error }
 /// <see cref="AskAsync"/> and a streaming
 /// <see cref="AskStreamingAsync"/> are surfaced.
 /// </summary>
-public sealed class RagPipeline
+public sealed class RagPipeline : IRagPipeline
 {
     // Generic, non-leaking message put on the wire when a stage faults. The
     // real exception is never surfaced to the browser (it could echo a poisoned
@@ -48,13 +48,13 @@ public sealed class RagPipeline
         _chat = chat;
     }
 
-    public async Task<RagResponse> AskAsync(string question, CancellationToken cancellationToken = default)
+    public async Task<RagResponse> AskAsync(string question, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
         var sw = Stopwatch.StartNew();
-        var retrieved = await _retriever.RetrieveAsync(question, TopK, cancellationToken).ConfigureAwait(false);
+        var retrieved = await _retriever.RetrieveAsync(question, TopK, ct).ConfigureAwait(false);
         var (prompt, used) = _promptEngine.Build(question, retrieved);
-        var response = await _chat.GetResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var response = await _chat.GetResponseAsync(prompt, cancellationToken: ct).ConfigureAwait(false);
         sw.Stop();
         return new RagResponse(
             Answer: response.Text ?? string.Empty,
@@ -65,7 +65,7 @@ public sealed class RagPipeline
 
     public async IAsyncEnumerable<RagStreamEvent> AskStreamingAsync(
         string question,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
 
@@ -78,7 +78,7 @@ public sealed class RagPipeline
         var prepFailed = false;
         try
         {
-            var retrieved = await _retriever.RetrieveAsync(question, TopK, cancellationToken).ConfigureAwait(false);
+            var retrieved = await _retriever.RetrieveAsync(question, TopK, ct).ConfigureAwait(false);
             (prompt, used) = _promptEngine.Build(question, retrieved);
         }
         catch (OperationCanceledException)
@@ -105,8 +105,8 @@ public sealed class RagPipeline
         // mid-stream fault becomes a clean Error event rather than a raw
         // exception torn through the SSE writer. (You cannot `yield` inside a
         // `catch`, hence the try/catch around MoveNextAsync with the yield outside.)
-        var stream = _chat.GetStreamingResponseAsync(prompt, cancellationToken: cancellationToken);
-        var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+        var stream = _chat.GetStreamingResponseAsync(prompt, cancellationToken: ct);
+        var enumerator = stream.GetAsyncEnumerator(ct);
         await using (enumerator.ConfigureAwait(false))
         {
             while (true)
@@ -119,7 +119,7 @@ public sealed class RagPipeline
                     {
                         break;
                     }
-                    cancellationToken.ThrowIfCancellationRequested();
+                    ct.ThrowIfCancellationRequested();
                     var text = enumerator.Current.Text;
                     tokenEvent = string.IsNullOrEmpty(text)
                         ? null

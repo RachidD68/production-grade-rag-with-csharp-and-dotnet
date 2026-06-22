@@ -11,6 +11,15 @@ namespace SmartDocs.Performance;
 /// delegates to the inner generator and stores the resulting vector.
 /// Used to skip the embedding API call for unchanged documents during
 /// incremental indexing (Ch 22).
+/// <para>
+/// This cache is deliberately backed by <see cref="IMemoryCache"/> and is
+/// therefore process-local — unlike the response and retrieval caches (Ch 21
+/// Layers 1–2), which use <see cref="Microsoft.Extensions.Caching.Distributed.IDistributedCache"/>
+/// so a hit is shared across every instance. That is fine here because
+/// embeddings are content-addressable (the SHA-256 key is a pure function of the
+/// text) and cheap to recompute, so a per-process cache that occasionally
+/// recomputes on a cold instance costs almost nothing.
+/// </para>
 /// </summary>
 public sealed class EmbeddingCache : IEmbeddingGenerator<string, Embedding<float>>
 {

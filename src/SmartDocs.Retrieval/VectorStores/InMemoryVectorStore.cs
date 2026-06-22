@@ -1,6 +1,7 @@
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 using SmartDocs.Core.Filtering;
+using SmartDocs.Core.Numerics;
 
 namespace SmartDocs.Retrieval.VectorStores;
 
@@ -66,7 +67,7 @@ public sealed class InMemoryVectorStore : IVectorStore
         // matching subset (not a post-filter that could leave fewer than K).
         var ranked = snapshot
             .Where(c => filter is null || filter.Matches(c.Chunk.Metadata))
-            .Select(c => new RetrievalResult(c.Chunk, Cosine(queryVector.Span, c.Vector.Span)))
+            .Select(c => new RetrievalResult(c.Chunk, CosineKernel.Cosine(queryVector.Span, c.Vector.Span)))
             .OrderByDescending(r => r.Score)
             .Take(topK)
             .ToList();
@@ -83,16 +84,5 @@ public sealed class InMemoryVectorStore : IVectorStore
             _chunks.RemoveAll(c => ids.Contains(c.Chunk.ChunkId));
         }
         return Task.CompletedTask;
-    }
-
-    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        if (a.Length != b.Length)
-        {
-            return 0;
-        }
-        double dot = 0, ma = 0, mb = 0;
-        for (int i = 0; i < a.Length; i++) { dot += a[i] * b[i]; ma += a[i] * a[i]; mb += b[i] * b[i]; }
-        return ma == 0 || mb == 0 ? 0 : dot / (Math.Sqrt(ma) * Math.Sqrt(mb));
     }
 }

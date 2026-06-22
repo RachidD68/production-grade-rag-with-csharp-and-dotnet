@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using SmartDocs.Core.Abstractions;
+using SmartDocs.Core.Numerics;
 
 namespace SmartDocs.Routing;
 
@@ -240,7 +241,7 @@ public sealed class SemanticRouter : IQueryRouter
             var best = 0.0;
             foreach (var vector in vectors)
             {
-                best = Math.Max(best, Cosine(queryVector.Span, vector.Span));
+                best = Math.Max(best, CosineKernel.Cosine(queryVector.Span, vector.Span));
             }
             scores[silo] = best;
         }
@@ -281,26 +282,6 @@ public sealed class SemanticRouter : IQueryRouter
             result[silo] = vectors;
         }
         return result.ToFrozenDictionary(StringComparer.Ordinal);
-    }
-
-    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        if (a.Length != b.Length || a.Length == 0)
-        {
-            return 0.0;
-        }
-        double dot = 0, magA = 0, magB = 0;
-        for (var i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            magA += a[i] * a[i];
-            magB += b[i] * b[i];
-        }
-        if (magA <= 0 || magB <= 0)
-        {
-            return 0.0;
-        }
-        return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
     }
 }
 

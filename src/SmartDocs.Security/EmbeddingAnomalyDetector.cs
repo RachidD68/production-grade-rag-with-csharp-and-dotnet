@@ -1,3 +1,5 @@
+using SmartDocs.Core.Numerics;
+
 namespace SmartDocs.Security;
 
 /// <summary>
@@ -51,19 +53,7 @@ public sealed class EmbeddingAnomalyDetector
         {
             throw new InvalidOperationException("Fit(...) must be called first.");
         }
-        similarity = Cosine(vector.Span, _centroid);
+        similarity = CosineKernel.Cosine(vector.Span, _centroid);
         return similarity < MinSimilarityThreshold;
-    }
-
-    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        if (a.Length != b.Length)
-        {
-            return 0;
-        }
-
-        double dot = 0, ma = 0, mb = 0;
-        for (int i = 0; i < a.Length; i++) { dot += a[i] * b[i]; ma += a[i] * a[i]; mb += b[i] * b[i]; }
-        return ma == 0 || mb == 0 ? 0 : dot / (Math.Sqrt(ma) * Math.Sqrt(mb));
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Numerics;
 
 namespace SmartDocs.Ingestion.Chunking;
 
@@ -61,7 +62,7 @@ public sealed class SemanticChunker : IChunker
             bool atBreak = i == sentences.Count;
             if (!atBreak)
             {
-                var sim = Cosine(embeddings[i - 1].Vector.Span, embeddings[i].Vector.Span);
+                var sim = CosineKernel.Cosine(embeddings[i - 1].Vector.Span, embeddings[i].Vector.Span);
                 atBreak = sim < BreakpointThreshold;
             }
 
@@ -76,10 +77,4 @@ public sealed class SemanticChunker : IChunker
         }
     }
 
-    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        double dot = 0, ma = 0, mb = 0;
-        for (int i = 0; i < a.Length; i++) { dot += a[i] * b[i]; ma += a[i] * a[i]; mb += b[i] * b[i]; }
-        return ma == 0 || mb == 0 ? 0 : dot / (Math.Sqrt(ma) * Math.Sqrt(mb));
-    }
 }

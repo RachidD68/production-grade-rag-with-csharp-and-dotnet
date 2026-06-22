@@ -59,6 +59,10 @@ builder.Services.AddSingleton<IRetriever>(sp =>
 builder.Services.AddSingleton(sp =>
     new PromptTemplateEngine(sp.GetRequiredService<ITokenCounter>()));
 builder.Services.AddSingleton<RagPipeline>();
+// The IRagPipeline seam (Ch 21): callers depend on the interface so a decorator
+// (e.g. ResponseCache) can wrap the pipeline transparently. Resolves to the same
+// singleton RagPipeline instance registered above.
+builder.Services.AddSingleton<IRagPipeline>(sp => sp.GetRequiredService<RagPipeline>());
 
 var app = builder.Build();
 
@@ -124,6 +128,10 @@ app.Run();
 static async IAsyncEnumerable<SseItem<string>> StreamSseAsync(
     RagPipeline pipeline,
     string question,
+    // ASP.NET Core binds this CancellationToken to HttpContext.RequestAborted, so
+    // when the browser closes the SSE connection mid-stream the token trips,
+    // AskStreamingAsync's ThrowIfCancellationRequested fires, and the upstream LLM
+    // call is abandoned — we stop paying for tokens nobody will read (Ch 21 §3.4).
     [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
 {
     await foreach (var ev in pipeline.AskStreamingAsync(question, cancellationToken))

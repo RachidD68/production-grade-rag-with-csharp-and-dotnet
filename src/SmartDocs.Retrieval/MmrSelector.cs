@@ -1,4 +1,5 @@
 using SmartDocs.Core.Documents;
+using SmartDocs.Core.Numerics;
 
 namespace SmartDocs.Retrieval;
 
@@ -79,7 +80,7 @@ public static class MmrSelector
                 double maxSimToSelected = 0.0;
                 for (var s = 0; s < selected.Count; s++)
                 {
-                    var sim = Cosine(candidate.Vector.Span, selected[s].Vector.Span);
+                    var sim = CosineKernel.Cosine(candidate.Vector.Span, selected[s].Vector.Span);
                     if (sim > maxSimToSelected)
                     {
                         maxSimToSelected = sim;
@@ -99,21 +100,5 @@ public static class MmrSelector
         }
 
         return [.. selected.Select(c => new RetrievalResult(c.Chunk, c.Relevance))];
-    }
-
-    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
-    {
-        if (a.Length != b.Length)
-        {
-            return 0.0;
-        }
-        double dot = 0, ma = 0, mb = 0;
-        for (var i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            ma += a[i] * a[i];
-            mb += b[i] * b[i];
-        }
-        return ma == 0 || mb == 0 ? 0.0 : dot / (Math.Sqrt(ma) * Math.Sqrt(mb));
     }
 }
