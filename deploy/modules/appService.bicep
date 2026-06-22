@@ -9,6 +9,20 @@ param location string = resourceGroup().location
 @description('App Service Plan SKU. P0V3 in dev, P2V3 in prod.')
 param planSku string = 'P0V3'
 
+// --- Autoscale bounds (Ch 25 §3.6, capacity breakpoints) -------------------------------
+// The chapter sizes the API against three breakpoints: ~1,200 queries/day (small),
+// ~12K/day (mid), ~120K/day (enterprise). Horizontal scale-out makes "scale past the
+// breakpoint" executable: dev rides 1–2 instances, prod 2–10. The prod maximum of 10
+// P2V3 instances is what carries the ~120K/day enterprise breakpoint with headroom; lift
+// `autoscaleMaxInstances` (and/or the SKU) to go beyond it.
+@description('Minimum App Service Plan instances. dev 1, prod 2 (always-warm for HA + zero-downtime slot swaps).')
+@minValue(1)
+param autoscaleMinInstances int = 1
+
+@description('Maximum App Service Plan instances scale-out can reach. prod 10 P2V3 instances carries the ~120K queries/day enterprise breakpoint.')
+@minValue(1)
+param autoscaleMaxInstances int = 2
+
 @description('Container image for SmartDocs.Api.')
 param image string = 'ghcr.io/rachiddahir/smartdocs-api:latest'
 
@@ -139,6 +153,92 @@ resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   kind: 'linux'
   properties: {
     reserved: true
+  }
+}
+
+// --- Autoscale (Ch 25 §3.6) -----------------------------------------------------------
+// Scale the plan horizontally on sustained load. Scale OUT when CPU > 70% (compute-bound
+// retrieval/generation) OR the HTTP queue backs up (requests waiting on a worker); scale
+// IN when CPU falls below 30%, one instance at a time on a longer cooldown so we shed
+// capacity gently. Bounds come from `autoscaleMin/MaxInstances` — prod's max of 10 is what
+// makes the ~120K queries/day enterprise breakpoint reachable without a manual resize.
+resource planAutoscale 'Microsoft.Insights/autoscaleSettings@2022-10-01' = {
+  name: 'autoscale-${planName}'
+  location: location
+  tags: tags
+  properties: {
+    enabled: true
+    targetResourceUri: plan.id
+    profiles: [
+      {
+        name: 'cpu-and-http-queue'
+        capacity: {
+          minimum: string(autoscaleMinInstances)
+          maximum: string(autoscaleMaxInstances)
+          default: string(autoscaleMinInstances)
+        }
+        rules: [
+          // Scale OUT: average CPU > 70% over 5 min → +1 instance (5 min cooldown).
+          {
+            metricTrigger: {
+              metricName: 'CpuPercentage'
+              metricResourceUri: plan.id
+              timeGrain: 'PT1M'
+              statistic: 'Average'
+              timeWindow: 'PT5M'
+              timeAggregation: 'Average'
+              operator: 'GreaterThan'
+              threshold: 70
+            }
+            scaleAction: {
+              direction: 'Increase'
+              type: 'ChangeCount'
+              value: '1'
+              cooldown: 'PT5M'
+            }
+          }
+          // Scale OUT: HTTP queue length > 100 over 5 min → +1 instance (requests are
+          // waiting on a free worker, which CPU alone can miss on I/O-bound waits).
+          {
+            metricTrigger: {
+              metricName: 'HttpQueueLength'
+              metricResourceUri: plan.id
+              timeGrain: 'PT1M'
+              statistic: 'Average'
+              timeWindow: 'PT5M'
+              timeAggregation: 'Average'
+              operator: 'GreaterThan'
+              threshold: 100
+            }
+            scaleAction: {
+              direction: 'Increase'
+              type: 'ChangeCount'
+              value: '1'
+              cooldown: 'PT5M'
+            }
+          }
+          // Scale IN: average CPU < 30% over 10 min → -1 instance (10 min cooldown).
+          {
+            metricTrigger: {
+              metricName: 'CpuPercentage'
+              metricResourceUri: plan.id
+              timeGrain: 'PT1M'
+              statistic: 'Average'
+              timeWindow: 'PT10M'
+              timeAggregation: 'Average'
+              operator: 'LessThan'
+              threshold: 30
+            }
+            scaleAction: {
+              direction: 'Decrease'
+              type: 'ChangeCount'
+              value: '1'
+              cooldown: 'PT10M'
+            }
+          }
+        ]
+      }
+    ]
   }
 }
 

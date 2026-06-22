@@ -57,6 +57,28 @@ jobs:
       - name: Restore
         run: dotnet restore RAG-in-DotNet.slnx
 
+      # ---------------------------------------------------------------------
+      # Supply-chain gate: fail the release if ANY referenced package (direct
+      # or transitive) has a known vulnerability. Runs after restore (the graph
+      # must be resolved) and BEFORE pack/push, so a vulnerable dependency can
+      # never be shipped to nuget.org. `dotnet list package --vulnerable` exits
+      # 0 even when it finds advisories, so we scan its output ourselves and
+      # exit non-zero on the "has the following vulnerable" banner it prints per
+      # project. NuGetAudit also surfaces these at restore as NU1901-NU1904, but
+      # this is an explicit, release-blocking gate.
+      # ---------------------------------------------------------------------
+      - name: Vulnerability scan (fail on any vulnerable package)
+        run: |
+          set -euo pipefail
+          echo "Scanning for vulnerable direct + transitive packages..."
+          report="$(dotnet list RAG-in-DotNet.slnx package --vulnerable --include-transitive)"
+          echo "$report"
+          if echo "$report" | grep -q "has the following vulnerable"; then
+            echo "::error::Vulnerable NuGet package(s) detected — blocking the release. See the report above."
+            exit 1
+          fi
+          echo "No vulnerable packages found."
+
       - name: Build (Release, warnings as errors)
         run: dotnet build RAG-in-DotNet.slnx --configuration ${{ env.CONFIGURATION }} --no-restore
 

@@ -20,6 +20,33 @@ param environment string
 @description('Azure region for all resources. Defaults to the resource group region.')
 param location string = resourceGroup().location
 
+// --- Data residency / sovereignty (Ch 25 §3.9) ---------------------------------------
+// `dataResidency` declares a sovereignty boundary for the DATA PLANE — the resources that
+// persist or process customer content: Cosmos (audit/consent), Storage (documents +
+// immutable archive), Azure OpenAI (prompts/completions), the vector backend
+// (Qdrant | Azure AI Search), Redis (cached answers), and App Configuration. When set to a
+// boundary ('eu' / 'us'), every one of those is pinned to `dataPlaneLocation`, so no
+// data-plane resource can silently land in a region outside the boundary even if the
+// resource group itself lives elsewhere. This is the IaC counterpart of Microsoft's
+// EU Data Boundary: a contractual + technical commitment that customer data is stored and
+// processed within the declared geography. Control-plane-only resources (VNet, Key Vault
+// metadata, App Insights, the Container Apps environment, the App Service/MCP/ingest
+// compute) continue to follow `location`.
+@description('Data sovereignty boundary for data-plane resources. \'none\' = follow `location`; \'eu\'/\'us\' = pin all data-plane resources to `dataPlaneLocation` (EU Data Boundary pattern).')
+@allowed([
+  'none'
+  'eu'
+  'us'
+])
+param dataResidency string = 'none'
+
+@description('Region for data-plane resources when a residency boundary is enforced. Defaults to `location`; set this to an in-boundary region (e.g. westeurope for \'eu\') when dataResidency != \'none\'.')
+param dataPlaneLocation string = location
+
+// Effective data-plane region: pinned to `dataPlaneLocation` inside a residency boundary,
+// otherwise the same as the control-plane `location`.
+var dataLocation = dataResidency == 'none' ? location : dataPlaneLocation
+
 @description('Hybrid retrieval backend. qdrant = self-hosted on ACI; azure-search = managed HA.')
 @allowed([
   'qdrant'
@@ -30,6 +57,14 @@ param hybridBackend string = 'qdrant'
 // --- SKU / capacity knobs, defaulted for dev and overridden per environment ---
 @description('App Service Plan SKU.')
 param appServicePlanSku string = 'P0V3'
+
+// Autoscale bounds for the App Service Plan. Defaulted for dev (1–2); prod overrides to
+// 2–10, whose maximum carries the ~120K queries/day enterprise breakpoint (Ch 25 §3.6).
+@description('Minimum App Service Plan instances (dev 1, prod 2).')
+param appServiceAutoscaleMin int = 1
+
+@description('Maximum App Service Plan instances (dev 2, prod 10 ≈ enterprise breakpoint).')
+param appServiceAutoscaleMax int = 2
 
 @description('Cosmos in serverless mode (dev) vs provisioned throughput (prod).')
 param cosmosServerless bool = true
@@ -85,7 +120,8 @@ module storage 'modules/storage.bicep' = {
   name: 'storage'
   params: {
     environment: environment
-    location: location
+    // Data-plane: documents + immutable audit archive live inside the residency boundary.
+    location: dataLocation
     skuName: storageSku
   }
 }
@@ -95,7 +131,8 @@ module cosmos 'modules/cosmos.bicep' = {
   name: 'cosmos'
   params: {
     environment: environment
-    location: location
+    // Data-plane: audit log / incident register / consent registry stay in-boundary.
+    location: dataLocation
     serverless: cosmosServerless
     provisionedThroughput: cosmosThroughput
   }
@@ -106,7 +143,9 @@ module openai 'modules/openai.bicep' = {
   name: 'openai'
   params: {
     environment: environment
-    location: location
+    // Data-plane: prompts + completions are processed in-boundary. NB the chosen
+    // dataPlaneLocation must carry the gpt-4o / embedding models you deploy.
+    location: dataLocation
     skuName: openAiSku
   }
 }
@@ -117,7 +156,11 @@ module qdrant 'modules/qdrant.bicep' = if (hybridBackend == 'qdrant') {
   name: 'qdrant'
   params: {
     environment: environment
-    location: location
+    // Data-plane: the vector index holds chunk embeddings — keep it in-boundary.
+    // NB Qdrant is VNet-injected into the data subnet, so when a residency boundary is
+    // enforced the VNet (control-plane `location`) must sit in the same region as
+    // `dataPlaneLocation`; otherwise run the managed `azure-search` backend instead.
+    location: dataLocation
     dataSubnetId: network.outputs.dataSubnetId
     snapshotStorageAccountName: storage.outputs.name
     snapshotContainerName: storage.outputs.qdrantSnapshotsContainer
@@ -129,7 +172,8 @@ module azureSearch 'modules/azureSearch.bicep' = if (hybridBackend == 'azure-sea
   name: 'azureSearch'
   params: {
     environment: environment
-    location: location
+    // Data-plane: the managed vector/search index stays in-boundary.
+    location: dataLocation
   }
 }
 
@@ -138,7 +182,8 @@ module redis 'modules/redis.bicep' = {
   name: 'redis'
   params: {
     environment: environment
-    location: location
+    // Data-plane: cached answers can contain customer content — keep it in-boundary.
+    location: dataLocation
     skuName: redisSkuName
     skuFamily: redisSkuFamily
     skuCapacity: redisSkuCapacity
@@ -159,7 +204,8 @@ module appConfig 'modules/appConfig.bicep' = {
   name: 'appConfig'
   params: {
     environment: environment
-    location: location
+    // Data-plane: config values + feature-flag payloads stay in-boundary.
+    location: dataLocation
   }
 }
 
@@ -197,6 +243,8 @@ module appService 'modules/appService.bicep' = {
     environment: environment
     location: location
     planSku: appServicePlanSku
+    autoscaleMinInstances: appServiceAutoscaleMin
+    autoscaleMaxInstances: appServiceAutoscaleMax
     keyVaultName: keyVault.outputs.name
     openAiEndpoint: openai.outputs.endpoint
     cosmosEndpoint: cosmos.outputs.endpoint

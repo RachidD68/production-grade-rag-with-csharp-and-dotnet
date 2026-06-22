@@ -110,10 +110,17 @@ resource mcp 'Microsoft.App/containerApps@2024-10-02-preview' = {
           }
         }
       ]
+      // --- KEDA autoscale (Ch 25 §3.6) --------------------------------------------------
+      // The MCP server is a stateless HTTP front door, so it scales on concurrency: KEDA
+      // adds a replica for every ~50 in-flight requests and removes them as load drains.
+      // minReplicas keeps the endpoint warm (no cold-start on the first tool call);
+      // maxReplicas is the ceiling that absorbs the enterprise breakpoint (~120K
+      // queries/day) — raise it (and the parent environment's quota) to push past it.
       scale: {
         minReplicas: minReplicas
         maxReplicas: maxReplicas
         rules: [
+          // HTTP rule: target 50 concurrent requests per replica, then scale out.
           {
             name: 'http-scale'
             http: {

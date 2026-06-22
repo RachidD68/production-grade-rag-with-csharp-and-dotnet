@@ -7,6 +7,12 @@ param hybridBackend = 'qdrant'
 // App Service: P2V3 (vs P0V3 in dev).
 param appServicePlanSku = 'P2V3'
 
+// Autoscale: 2–10 instances (vs 1–2 in dev). Min 2 keeps the plan always-warm for HA and
+// zero-downtime slot swaps; max 10 P2V3 instances carries the ~120K queries/day
+// enterprise breakpoint with headroom (Ch 25 §3.6).
+param appServiceAutoscaleMin = 2
+param appServiceAutoscaleMax = 10
+
 // Cosmos: provisioned throughput, 20,000 RU/s (vs serverless in dev).
 param cosmosServerless = false
 param cosmosThroughput = 20000

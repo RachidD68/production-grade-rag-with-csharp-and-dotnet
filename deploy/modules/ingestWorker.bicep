@@ -77,11 +77,18 @@ resource ingest 'Microsoft.App/containerApps@2024-10-02-preview' = {
           }
         }
       ]
+      // --- KEDA autoscale (Ch 25 §3.6) --------------------------------------------------
+      // Ingestion is bursty and queue-driven, so the worker scales on Service Bus queue
+      // depth and goes scale-to-zero between batches (minReplicas 0 = no idle cost). KEDA
+      // targets ~20 unprocessed messages per replica and adds replicas up to maxReplicas
+      // as the backlog grows — a 120K-doc enterprise re-index drains across the full fan-out
+      // then collapses back to zero, instead of pinning a fixed pool.
       scale: {
         // Scale to zero when idle; KEDA Service Bus rule scales out on queue depth.
         minReplicas: 0
         maxReplicas: maxReplicas
         rules: [
+          // Service Bus queue-depth rule: +1 replica per ~20 backlogged messages.
           {
             name: 'queue-depth'
             custom: {
