@@ -22,6 +22,10 @@
     <ProjectReference Include="..\SmartDocs.Security\SmartDocs.Security.csproj" />
     <ProjectReference Include="..\SmartDocs.Generation\SmartDocs.Generation.csproj" />
     <ProjectReference Include="..\SmartDocs.Evaluation\SmartDocs.Evaluation.csproj" />
+    <!-- Ch 25 BudgetEnforcingPipeline reuses the Ch 21 cost primitives
+         (TokenPricing) and the IRagPipeline seam. Performance references Core +
+         Generation only, so this stays acyclic — Operations remains the leaf. -->
+    <ProjectReference Include="..\SmartDocs.Performance\SmartDocs.Performance.csproj" />
   </ItemGroup>
 
 </Project>

@@ -85,6 +85,20 @@ resource backupContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   }
 }
 
+// Vector-store DR (Ch 25 §3.8): the scheduled snapshot job (deploy/modules/qdrant.bicep)
+// calls the Qdrant snapshot API and syncs the resulting snapshot files here. Restore is
+// documented in docs/runbooks/qdrant-restore.md. The managed 'azure-search' backend is the
+// HA alternative and needs no manual snapshots (Microsoft replicates the index).
+resource qdrantSnapshotsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
+  parent: blobService
+  name: 'qdrant-snapshots'
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
 output id string = storage.id
 output name string = storage.name
 output blobEndpoint string = storage.properties.primaryEndpoints.blob
+// Dedicated container the Qdrant snapshot job writes to (and restore reads from).
+output qdrantSnapshotsContainer string = qdrantSnapshotsContainer.name

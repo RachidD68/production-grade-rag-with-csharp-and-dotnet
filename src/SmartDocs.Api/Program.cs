@@ -12,9 +12,11 @@
 using System.Net.ServerSentEvents;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartDocs.Api;
+using SmartDocs.Api.HealthChecks;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Configuration;
 using SmartDocs.Core.DependencyInjection;
@@ -22,6 +24,9 @@ using SmartDocs.Core.Documents;
 using SmartDocs.Core.Tokens;
 using SmartDocs.Generation;
 using SmartDocs.Ingestion.Embeddings;
+using SmartDocs.Operations.Budgeting;
+using SmartDocs.Performance;
+using SmartDocs.Performance.Conversations;
 using SmartDocs.Retrieval;
 using SmartDocs.Retrieval.VectorStores;
 
@@ -29,6 +34,48 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddSmartDocsCore(builder.Configuration);
+
+// --- Ch 25 production hardening -------------------------------------------------
+
+// 3.1 Resilience: register the resilient named HttpClient (4 retries + jitter,
+// 30 s attempt timeout, 50% circuit breaker, 100 s total budget) for the Azure
+// OpenAI + embedding transports. The provider SDK / IChatClient is handed this
+// client in a real deployment; here it makes the pipeline available to DI.
+builder.Services.AddResilientLlmHttpClient("llm");
+builder.Services.AddResilientLlmHttpClient("embeddings");
+
+// IDistributedCache for the response cache, conversation hot store, and the Redis
+// readiness probe. Redis when configured (SmartDocs:Dependencies:RedisConnection),
+// else the in-memory distributed cache so the dev inner loop and tests still work.
+var redisConnection = builder.Configuration[$"{DependencyEndpointOptions.SectionName}:RedisConnection"];
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
+// 3.5 Conversation state: Redis-backed hot store when Redis is configured, else
+// the process-local store. Cosmos is the durable tier behind the same seam.
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddDistributedConversationState();
+}
+else
+{
+    builder.Services.AddInMemoryConversationState();
+}
+
+// 3.7 Feature flags / runtime config: the configuration-backed gate. Backed by
+// Azure App Configuration + feature management in a managed deployment.
+builder.Services.AddFeatureGate();
+
+// 3.3 Health checks: a `self` liveness check (tag `live`) plus the Qdrant /
+// OpenAI / Redis / Cosmos readiness probes (tag `ready`). All degrade gracefully
+// offline rather than throwing.
+builder.Services.AddSmartDocsHealthChecks(builder.Configuration);
 
 builder.Services.AddSingleton<IVectorStore>(sp =>
 {
@@ -64,6 +111,16 @@ builder.Services.AddSingleton<RagPipeline>();
 // singleton RagPipeline instance registered above.
 builder.Services.AddSingleton<IRagPipeline>(sp => sp.GetRequiredService<RagPipeline>());
 
+// 3.6 Budget enforcement: when the flag is on, decorate the IRagPipeline with the
+// per-tenant governor (spend quota + rate limit + spend circuit-breaker) so a
+// runaway/abusive tenant is BLOCKED — not merely alerted — before any token is
+// spent. The decorator becomes the outermost IRagPipeline layer. Gated by the
+// composition-time feature flag Features:budget.enforcement.enabled.
+if (builder.Configuration.GetValue($"{ConfigurationFeatureGate.SectionName}:budget.enforcement.enabled", false))
+{
+    builder.Services.AddBudgetEnforcement();
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -91,13 +148,47 @@ app.MapGet("/health", (
 .WithName("Health")
 .WithTags("diagnostics");
 
-app.MapPost("/api/ask", async (AskRequest req, RagPipeline pipeline, CancellationToken ct) =>
+// 3.3 Liveness vs readiness (Ch 25). /health/live runs only the `self` check —
+// "the process is up" — so a dependency outage never restarts a healthy pod.
+// /health/ready runs the dependency probes — "can this instance serve traffic" —
+// which the load balancer / ingress uses to gate routing. The Bicep probe targets
+// /health/ready. The existing /health stays as the human diagnostic view.
+app.MapHealthChecks("/health/live", new()
+{
+    Predicate = check => check.Tags.Contains(SmartDocsHealthChecks.LiveTag),
+})
+.WithTags("diagnostics");
+
+app.MapHealthChecks("/health/ready", new()
+{
+    Predicate = check => check.Tags.Contains(SmartDocsHealthChecks.ReadyTag),
+})
+.WithTags("diagnostics");
+
+app.MapPost("/api/ask", async (AskRequest req, IRagPipeline pipeline, IFeatureGate features, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(req.Question))
     {
         return Results.BadRequest(new { error = "Question is required." });
     }
-    var response = await pipeline.AskAsync(req.Question, ct);
+
+    // 3.7 Real request-time feature-gate consumer: when graph retrieval is flagged
+    // on at runtime, the answer is tagged so a caller can observe the active route.
+    // The flag is read per request, so flipping it in configuration (Azure App
+    // Configuration in production) changes behaviour with no redeploy.
+    var graphEnabled = features.IsEnabled("graph-retrieval.enabled");
+
+    RagResponse response;
+    try
+    {
+        response = await pipeline.AskAsync(req.Question, ct);
+    }
+    catch (BudgetExceededException)
+    {
+        // 3.6 The governor blocked this tenant — surface a 429, not a 500.
+        return Results.StatusCode(StatusCodes.Status429TooManyRequests);
+    }
+
     return Results.Ok(new AskResponse(
         Answer: response.Answer,
         Citations: response.Sources.Select((s, i) => new Citation(
@@ -107,12 +198,12 @@ app.MapPost("/api/ask", async (AskRequest req, RagPipeline pipeline, Cancellatio
             Title: s.Chunk.Metadata.Title,
             Score: s.Score)).ToArray(),
         LatencyMs: response.LatencyMs,
-        Strategy: response.Strategy));
+        Strategy: graphEnabled ? response.Strategy + "+graph" : response.Strategy));
 })
 .WithName("Ask")
 .WithTags("rag");
 
-app.MapPost("/api/ask/stream", IResult (AskRequest req, RagPipeline pipeline, CancellationToken ct) =>
+app.MapPost("/api/ask/stream", IResult (AskRequest req, IRagPipeline pipeline, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(req.Question))
     {
@@ -126,7 +217,7 @@ app.MapPost("/api/ask/stream", IResult (AskRequest req, RagPipeline pipeline, Ca
 app.Run();
 
 static async IAsyncEnumerable<SseItem<string>> StreamSseAsync(
-    RagPipeline pipeline,
+    IRagPipeline pipeline,
     string question,
     // ASP.NET Core binds this CancellationToken to HttpContext.RequestAborted, so
     // when the browser closes the SSE connection mid-stream the token trips,

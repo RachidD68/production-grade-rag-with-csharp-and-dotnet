@@ -24,6 +24,14 @@ param minReplicas int = 1
 @description('Max replicas.')
 param maxReplicas int = 3
 
+@description('Canary weight (%) sent to the newest ("next") revision. Drive 0 -> 10 -> 50 -> 100 across the rollout; the pinned previous ("current") revision takes the remainder.')
+@minValue(0)
+@maxValue(100)
+param canaryWeight int = 100
+
+@description('Revision name of the pinned previous ("current") revision that absorbs non-canary traffic. Empty on the first deploy (100% necessarily goes to latest).')
+param previousRevisionName string = ''
+
 var tags = {
   environment: environment
   app: 'smartdocs'
@@ -31,6 +39,34 @@ var tags = {
 
 var suffix = uniqueString(resourceGroup().id, environment)
 var appName = 'ca-mcp-${environment}-${suffix}'
+
+// --- Progressive delivery / blue-green traffic split (Ch 25 §3.4) ----------------------
+// Revision mode is 'Multiple' so two revisions can serve at once. The newest revision is
+// labelled 'next' and receives `canaryWeight`%; a pinned previous revision labelled
+// 'current' absorbs the remainder. The previous-revision entry only joins the array once
+// `previousRevisionName` is supplied (you cannot weight a revision that does not exist),
+// so the very first deploy sends 100% to latest.
+//
+// Canary / rollback flow:
+//   deploy at canaryWeight=0  -> smoke + faithfulness probe on the 'next' revision
+//   -> shift weights up on green (0 -> 10 -> 50 -> 100)
+//   -> auto-rollback by setting canaryWeight back to 0 (traffic snaps to 'current')
+//      if the rolling faithfulness signal drops. See docs/runbooks/canary-rollback.md.
+var nextTraffic = [
+  {
+    latestRevision: true
+    weight: canaryWeight
+    label: 'next'
+  }
+]
+var currentTraffic = empty(previousRevisionName) ? [] : [
+  {
+    revisionName: previousRevisionName
+    weight: 100 - canaryWeight
+    label: 'current'
+  }
+]
+var trafficSplit = concat(nextTraffic, currentTraffic)
 
 resource mcp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   name: appName
@@ -42,11 +78,15 @@ resource mcp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   properties: {
     managedEnvironmentId: managedEnvironmentId
     configuration: {
+      // Multiple-revision mode is required to weight traffic across two live revisions.
+      activeRevisionsMode: 'Multiple'
       ingress: {
         external: true
         targetPort: 8080
         transport: 'http'
         allowInsecure: false
+        // Weighted canary split — see the trafficSplit var above for the rollout flow.
+        traffic: trafficSplit
       }
     }
     template: {

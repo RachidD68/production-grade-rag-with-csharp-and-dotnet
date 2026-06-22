@@ -57,6 +57,8 @@ param keyVaultPrivateEndpoint bool = false
 
 // Built-in role definition id: Key Vault Secrets User.
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
+// Built-in role definition id: App Configuration Data Reader (read keys + feature flags).
+var appConfigDataReaderRoleId = '516239f1-63e1-4d78-a4de-a74fb236a071'
 
 // 1. Network — must exist before any VNet-injected / private-endpoint resource.
 module network 'modules/network.bicep' = {
@@ -110,12 +112,15 @@ module openai 'modules/openai.bicep' = {
 }
 
 // 6a. Qdrant (self-hosted) — only when hybridBackend == 'qdrant'.
+//     Scheduled snapshots land in the storage account's qdrant-snapshots container (DR).
 module qdrant 'modules/qdrant.bicep' = if (hybridBackend == 'qdrant') {
   name: 'qdrant'
   params: {
     environment: environment
     location: location
     dataSubnetId: network.outputs.dataSubnetId
+    snapshotStorageAccountName: storage.outputs.name
+    snapshotContainerName: storage.outputs.qdrantSnapshotsContainer
   }
 }
 
@@ -143,6 +148,15 @@ module redis 'modules/redis.bicep' = {
 // 8. App Insights — Log Analytics workspace + Application Insights.
 module appInsights 'modules/appInsights.bicep' = {
   name: 'appInsights'
+  params: {
+    environment: environment
+    location: location
+  }
+}
+
+// 8b. App Configuration — centralised config + feature flags (read at request scope).
+module appConfig 'modules/appConfig.bicep' = {
+  name: 'appConfig'
   params: {
     environment: environment
     location: location
@@ -192,6 +206,7 @@ module appService 'modules/appService.bicep' = {
     appInsightsConnectionString: appInsights.outputs.connectionString
     blobEndpoint: storage.outputs.blobEndpoint
     hybridBackend: hybridBackend
+    appConfigEndpoint: appConfig.outputs.endpoint
   }
   dependsOn: [
     keyVault
@@ -200,6 +215,7 @@ module appService 'modules/appService.bicep' = {
     cosmos
     openai
     appInsights
+    appConfig
   ]
 }
 
@@ -263,6 +279,32 @@ resource ingestKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
+// RBAC: the App Service identity (and its blue-green staging slot) read config + feature
+// flags from App Configuration at request scope — App Configuration Data Reader.
+resource appConfigStore 'Microsoft.AppConfiguration/configurationStores@2024-05-01' existing = {
+  name: appConfig.outputs.name
+}
+
+resource appConfigDataReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(appConfigStore.id, appService.outputs.principalId, appConfigDataReaderRoleId)
+  scope: appConfigStore
+  properties: {
+    principalId: appService.outputs.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', appConfigDataReaderRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource slotAppConfigDataReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(appConfigStore.id, appService.outputs.slotPrincipalId, appConfigDataReaderRoleId)
+  scope: appConfigStore
+  properties: {
+    principalId: appService.outputs.slotPrincipalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', appConfigDataReaderRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // --- Outputs ---
 output apiUrl string = 'https://${appService.outputs.defaultHostName}'
 output mcpFqdn string = mcp.outputs.fqdn
@@ -271,6 +313,7 @@ output cosmosEndpoint string = cosmos.outputs.endpoint
 output openAiEndpoint string = openai.outputs.endpoint
 output redisHost string = redis.outputs.host
 output blobEndpoint string = storage.outputs.blobEndpoint
+output appConfigEndpoint string = appConfig.outputs.endpoint
 output vectorBackend string = hybridBackend
 output qdrantHost string = qdrantHost
 output searchHost string = searchHost

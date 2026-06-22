@@ -65,4 +65,7 @@
   <Folder Name="/tools/SmartDocs.LoadTest/">
     <Project Path="tools/SmartDocs.LoadTest/SmartDocs.LoadTest.csproj" />
   </Folder>
+  <Folder Name="/tools/SmartDocs.Reindex/">
+    <Project Path="tools/SmartDocs.Reindex/SmartDocs.Reindex.csproj" />
+  </Folder>
 </Solution>

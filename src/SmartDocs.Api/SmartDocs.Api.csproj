@@ -14,6 +14,11 @@
     <ProjectReference Include="..\SmartDocs.Generation\SmartDocs.Generation.csproj" />
     <ProjectReference Include="..\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
     <ProjectReference Include="..\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <!-- Ch 25 composition: the resilient LLM HttpClient + cost primitives +
+         distributed conversation store (Performance), and the budget governor
+         (Operations, which transitively brings Security's RateLimiter). -->
+    <ProjectReference Include="..\SmartDocs.Performance\SmartDocs.Performance.csproj" />
+    <ProjectReference Include="..\SmartDocs.Operations\SmartDocs.Operations.csproj" />
   </ItemGroup>
 
 </Project>

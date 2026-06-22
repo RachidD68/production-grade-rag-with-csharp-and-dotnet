@@ -272,3 +272,95 @@ dotnet run --project tools/SmartDocs.LoadTest  -c Release -- --baseurl <dead-por
   The publish workflow's SBOM step installs the CycloneDX *global tool* on the CI
   runner (a build-time tool, not a `Directory.Packages.props` reference).
 
+
+## Chapter 25 — Phase 3 (code)
+
+Production-hardening supporting code for the Ch 25 capstone: a configured
+resilience profile for the LLM/embedding HTTP clients, liveness/readiness health
+checks, a conversation-state persistence seam (in-memory + Redis), a budget
+governor that *blocks* (not just alerts) a runaway tenant, a config-backed
+feature-gate, and a runnable zero-downtime reindex tool. Package-free — no new
+NuGet pin; only the shared framework + already-pinned packages.
+
+### What shipped
+
+- **3.1 Resilience** — `ResilienceWiring.AddResilientLlmHttpClient` (Ch 21, in
+  `SmartDocs.Performance`) now configures `AddStandardResilienceHandler` to the
+  Ch 25 profile: `Retry.MaxRetryAttempts=4`, `UseJitter=true`,
+  `BackoffType=Exponential`, `AttemptTimeout=30s`, `CircuitBreaker.FailureRatio=0.5`,
+  `TotalRequestTimeout=100s`. **Judgment call:** the brief's
+  `CircuitBreaker.SamplingDuration=30s` violates the framework's validator rule
+  (`SamplingDuration ≥ 2 × AttemptTimeout` ⇒ ≥ 60 s); clamped to **60 s** and
+  documented in XML + `ResilienceWiring.StandardProfile`. Wired into
+  `Program.cs` for the `llm` and `embeddings` clients.
+- **3.3 Health checks** — package-free `IHealthCheck`s in
+  `SmartDocs.Api/HealthChecks/`: `QdrantHealthCheck`, `OpenAiHealthCheck`,
+  `RedisHealthCheck`, `CosmosHealthCheck` (+ shared `HttpProbe`,
+  `DependencyEndpointOptions`, `SmartDocsHealthChecks` registration — renamed from
+  `HealthCheckRegistration` to avoid a clash with the framework type). Each degrades
+  (not throws) offline. `/health/live` (tag `live`) + `/health/ready` (tag `ready`)
+  mapped; `/health` kept.
+- **3.5 Conversation state** — `IConversationStateStore` (Core) +
+  `InMemoryConversationStateStore` (Core) + `DistributedConversationStateStore`
+  (Performance, over `IDistributedCache`). TTL = consent/retention boundary
+  (Ch 24). DI: `AddInMemoryConversationState` / `AddDistributedConversationState`.
+- **3.6 Budget enforcement** — `BudgetEnforcingPipeline : IRagPipeline`
+  (`SmartDocs.Operations/Budgeting/`) with `TenantSpendLedger`, `BudgetPolicy`,
+  `BudgetDenialReason`, `BudgetExceededException`. Reuses Ch 23 `RateLimiter` + Ch 21
+  `TokenPricing`/`CostMeter`. Injected `TimeProvider`. DI `AddBudgetEnforcement`
+  decorates the registered `IRagPipeline` (manual decoration — no Scrutor dep added).
+  `/api/ask` maps `BudgetExceededException` → 429.
+- **3.7 Feature gate** — `IFeatureGate` + `ConfigurationFeatureGate` (Core, reads
+  `Features` section, fail-closed). DI `AddFeatureGate` (scoped). Real consumers:
+  `/api/ask` reads `graph-retrieval.enabled` per request; budget enforcement gated
+  on `Features:budget.enforcement.enabled` at composition.
+- **3.2 Reindex tool** — `tools/SmartDocs.Reindex/` (net10.0 console, `IsPackable=false`,
+  added to slnx). Six-stage zero-downtime migration (shadow → dual-write → backfill →
+  eval-gate → atomic cutover → keep old one cycle) reusing Ch 22 `BackfillScheduler`
+  (ParallelShadowThenCutover), `DriftAdapter`, `DocumentReingestService`. Offline
+  against `InMemoryVectorStore` + stub embedders; exits 0.
+
+### Commands and results
+
+```
+# 1. Build (warnings-as-errors, CA1068/CA2007 etc.)
+dotnet build -c Release RAG-in-DotNet.slnx
+#   => Build succeeded. 0 Warning(s) / 0 Error(s).
+
+# 2. Tests
+dotnet test -c Release RAG-in-DotNet.slnx --no-build
+#   => SmartDocs.SecurityTests    : Passed 67,  Total 67.
+#   => SmartDocs.IntegrationTests : Passed 15,  Total 15  (+9: health checks/endpoints).
+#   => SmartDocs.UnitTests        : Passed 361, Skipped 1 (ONNX model), Total 362
+#      (+29: resilience profile, conversation store, budget governor, feature gate).
+#   All executed tests green.
+
+# 3. Format
+dotnet format --verify-no-changes RAG-in-DotNet.slnx
+#   => exit 0.
+
+# 4. Banned-API grep (must be empty)
+grep -rEn "ChatAgent\b|IVectorStoreRecordCollection|CreateCollectionIfNotExistsAsync|VectorStoreRecord(Key|Data|Vector)|Microsoft\.Extensions\.AI\.Ollama" \
+    src/ tests/ tools/ samples/ --include=*.cs
+#   => no matches (empty).
+
+# 5. Reindex tool runs offline, exit 0
+dotnet run --project tools/SmartDocs.Reindex -c Release
+#   => six stages print, eval gate PASS (live & shadow hit-rate 100%), exit 0.
+```
+
+### Judgment calls
+
+- **CircuitBreaker SamplingDuration clamped 30s → 60s** (framework validator
+  requires ≥ 2 × AttemptTimeout). All other resilience numbers match the brief.
+- **No new package.** Budget DI decoration done by hand (capture + rebind the
+  `IRagPipeline` descriptor) rather than adding Scrutor to `SmartDocs.Operations`.
+  Cosmos durable store noted in XML only (`Microsoft.Azure.Cosmos` NOT added);
+  Cosmos/Redis/OpenAI/Qdrant health probes are plain `HttpClient`/`IDistributedCache`,
+  no SDK pins. Feature management noted as Azure App Configuration in XML
+  (`Microsoft.FeatureManagement` NOT added).
+- **`SmartDocsHealthChecks`** registration class renamed from `HealthCheckRegistration`
+  to avoid `CS0104` against `Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckRegistration`.
+- **Endpoints rebound to `IRagPipeline`.** `/api/ask` + `/api/ask/stream` previously
+  injected the concrete `RagPipeline`, which bypassed the decorator seam; switched to
+  `IRagPipeline` so the budget governor (and any cache decorator) actually applies.

@@ -39,6 +39,9 @@ param blobEndpoint string = ''
 @description('Hybrid retrieval backend: qdrant | azure-search.')
 param hybridBackend string = 'qdrant'
 
+@description('Azure App Configuration endpoint. The app reads feature flags at request scope via its managed identity (granted App Configuration Data Reader in main.bicep).')
+param appConfigEndpoint string = ''
+
 var tags = {
   environment: environment
   app: 'smartdocs'
@@ -52,6 +55,79 @@ var siteName = 'app-smartdocs-${environment}-${suffix}'
 // via the site's managed identity (granted Key Vault Secrets User in main.bicep).
 var openAiKeyRef = '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=openai-api-key)'
 var neo4jPasswordRef = '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=neo4j-password)'
+
+// Shared app settings — the production site and the blue-green 'staging' slot run the
+// SAME configuration so a slot swap is a true like-for-like cutover (Ch 25 §3.4).
+var appSettings = [
+  {
+    name: 'WEBSITES_PORT'
+    value: '8080'
+  }
+  // --- Telemetry ---
+  {
+    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+    value: appInsightsConnectionString
+  }
+  // --- Config + feature management (Azure App Configuration) ---
+  // The .NET App Configuration provider connects with the site's managed identity
+  // (App Configuration Data Reader) and refreshes feature flags at request scope.
+  {
+    name: 'SmartDocs__AppConfig__Endpoint'
+    value: appConfigEndpoint
+  }
+  // --- LLM (Azure OpenAI) ---
+  {
+    name: 'SmartDocs__Llm__Provider'
+    value: 'AzureOpenAI'
+  }
+  {
+    name: 'SmartDocs__Llm__Endpoint'
+    value: openAiEndpoint
+  }
+  {
+    name: 'SmartDocs__Llm__ChatModel'
+    value: 'gpt-4o'
+  }
+  {
+    name: 'SmartDocs__Llm__EmbeddingModel'
+    value: 'text-embedding-3-small'
+  }
+  {
+    name: 'SmartDocs__Llm__ApiKey'
+    value: openAiKeyRef
+  }
+  // --- Retrieval backend (switched by hybridBackend) ---
+  {
+    name: 'SmartDocs__Retrieval__Backend'
+    value: hybridBackend
+  }
+  {
+    name: 'SmartDocs__Retrieval__Qdrant__Host'
+    value: qdrantHost
+  }
+  {
+    name: 'SmartDocs__Graph__Neo4j__Uri'
+    value: neo4jHost
+  }
+  {
+    name: 'SmartDocs__Graph__Neo4j__Password'
+    value: neo4jPasswordRef
+  }
+  // --- Cache ---
+  {
+    name: 'SmartDocs__Cache__Redis__Host'
+    value: redisHost
+  }
+  // --- Compliance store ---
+  {
+    name: 'SmartDocs__Audit__Cosmos__Endpoint'
+    value: cosmosEndpoint
+  }
+  {
+    name: 'SmartDocs__Storage__BlobEndpoint'
+    value: blobEndpoint
+  }
+]
 
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: planName
@@ -83,69 +159,40 @@ resource site 'Microsoft.Web/sites@2024-04-01' = {
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       healthCheckPath: '/health/ready'
-      appSettings: [
-        {
-          name: 'WEBSITES_PORT'
-          value: '8080'
-        }
-        // --- Telemetry ---
-        {
-          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: appInsightsConnectionString
-        }
-        // --- LLM (Azure OpenAI) ---
-        {
-          name: 'SmartDocs__Llm__Provider'
-          value: 'AzureOpenAI'
-        }
-        {
-          name: 'SmartDocs__Llm__Endpoint'
-          value: openAiEndpoint
-        }
-        {
-          name: 'SmartDocs__Llm__ChatModel'
-          value: 'gpt-4o'
-        }
-        {
-          name: 'SmartDocs__Llm__EmbeddingModel'
-          value: 'text-embedding-3-small'
-        }
-        {
-          name: 'SmartDocs__Llm__ApiKey'
-          value: openAiKeyRef
-        }
-        // --- Retrieval backend (switched by hybridBackend) ---
-        {
-          name: 'SmartDocs__Retrieval__Backend'
-          value: hybridBackend
-        }
-        {
-          name: 'SmartDocs__Retrieval__Qdrant__Host'
-          value: qdrantHost
-        }
-        {
-          name: 'SmartDocs__Graph__Neo4j__Uri'
-          value: neo4jHost
-        }
-        {
-          name: 'SmartDocs__Graph__Neo4j__Password'
-          value: neo4jPasswordRef
-        }
-        // --- Cache ---
-        {
-          name: 'SmartDocs__Cache__Redis__Host'
-          value: redisHost
-        }
-        // --- Compliance store ---
-        {
-          name: 'SmartDocs__Audit__Cosmos__Endpoint'
-          value: cosmosEndpoint
-        }
-        {
-          name: 'SmartDocs__Storage__BlobEndpoint'
-          value: blobEndpoint
-        }
-      ]
+      appSettings: appSettings
+    }
+  }
+}
+
+// --- Blue-green deployment slot (Ch 25 §3.4) -------------------------------------------
+// Canary / rollback flow for the App Service API:
+//   1. Deploy the new image to the 'staging' slot at 0% production traffic.
+//   2. Run smoke tests + a faithfulness probe against the slot's own hostname.
+//   3. Swap 'staging' <-> 'production' — the warmed slot takes 100% atomically.
+//   4. Auto-rollback: if the rolling faithfulness signal drops post-swap, swap back
+//      (the previous image is still warm in the now-'staging' slot). See
+//      docs/runbooks/canary-rollback.md.
+// The slot inherits the SAME app settings as production (shared `appSettings` var) so the
+// swap is a true like-for-like cutover, and carries its own managed identity for RBAC.
+resource stagingSlot 'Microsoft.Web/sites/slots@2024-04-01' = {
+  parent: site
+  name: 'staging'
+  location: location
+  tags: tags
+  kind: 'app,linux,container'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: plan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'DOCKER|${image}'
+      alwaysOn: true
+      ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
+      healthCheckPath: '/health/ready'
+      appSettings: appSettings
     }
   }
 }
@@ -155,3 +202,6 @@ output name string = site.name
 output defaultHostName string = site.properties.defaultHostName
 // System-assigned identity — granted Key Vault Secrets User + data-plane roles in main.
 output principalId string = site.identity.principalId
+// Blue-green staging slot — its own identity also needs the data-plane roles granted.
+output slotName string = stagingSlot.name
+output slotPrincipalId string = stagingSlot.identity.principalId
