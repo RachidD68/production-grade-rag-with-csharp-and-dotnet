@@ -1,6 +1,6 @@
-// Ch 20 — Ground-truth evaluation (MAF 1.6.1)
+// Ch 20 — Ground-truth evaluation
 //
-// MAF 1.6.1 added first-class workflow evaluation against expected outputs.
+// MAF ships first-class workflow evaluation against expected outputs.
 // This sample runs a tiny SmartDocs agent against a 10-question gold set
 // and reports an aggregate match score plus per-question pass / fail.
 //

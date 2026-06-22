@@ -60,10 +60,10 @@ public sealed class AgentsTests
     }
 
     [Fact]
-    public async Task MultiAgentWorkflow_Magentic_returns_manager_decided_answer()
+    public async Task MultiAgentWorkflow_AgentsAsTools_returns_manager_decided_answer()
     {
-        // The Magentic pattern hands orchestration to the Manager agent — it
-        // decides which workers (if any) to invoke via tool calls. The stub
+        // The agents-as-tools pattern hands orchestration to the Manager agent —
+        // it decides which workers (if any) to invoke via tool calls. The stub
         // chat client doesn't emit tool calls, so the Manager simply returns
         // its first response. This test verifies the orchestration plumbing
         // (session creation, tool wiring, manager construction) is sound;
@@ -76,7 +76,7 @@ public sealed class AgentsTests
         ]);
 
         var workflow = new MultiAgentWorkflow(chat, retriever);
-        var answer = await workflow.RunMagenticAsync("What is alpha?");
+        var answer = await workflow.RunAgentsAsToolsAsync("What is alpha?");
 
         Assert.False(string.IsNullOrWhiteSpace(answer));
         Assert.Contains("[Source 1]", answer, StringComparison.Ordinal);

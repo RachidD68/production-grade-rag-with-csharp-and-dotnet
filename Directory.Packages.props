@@ -34,6 +34,11 @@
     <!-- A2A remains preview at the 1.10.0 milestone — see ADR-0011. -->
     <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.10.0-preview.260610.1" />
     <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.10.0-preview.260610.1" />
+    <!-- Mem0 long-term memory provider (Ch 19). Ships on its OWN preview line
+         (1.0.0-preview), NOT the 1.10 MAF core line — do not "bump" it to 1.10.
+         Used for the optional managed-memory registration path beside the
+         hand-rolled SmartDocsMemoryProvider (AIContextProvider over the Ch6 stack). -->
+    <PackageVersion Include="Microsoft.Agents.AI.Mem0" Version="1.0.0-preview.251028.1" />
     <!-- NOTE: there is NO standalone Microsoft.Agents.AI.OpenTelemetry package
          on NuGet (the prior 1.8.0 pin referenced a non-existent id and only
          survived because no project consumed it). MAF agent telemetry comes

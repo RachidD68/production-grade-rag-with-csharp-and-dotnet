@@ -1,5 +1,6 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using SmartDocs.Agents.Memory;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 
@@ -119,6 +120,64 @@ public static class SmartDocsAgent
                 Tools = tools,
             },
             AIContextProviders = [new RetrievedChunksContextProvider(retrievedChunks)],
+        };
+
+        return new ChatClientAgent(chat, options);
+    }
+
+    /// <summary>
+    /// Builds a <see cref="ChatClientAgent"/> with the SmartDocs retrieval tools AND
+    /// a long-term memory <see cref="AIContextProvider"/> attached via
+    /// <see cref="ChatClientAgentOptions.AIContextProviders"/>. The provider recalls
+    /// durable facts about the caller before each turn and remembers new ones after —
+    /// the framework-native way to give the agent memory (Ch 19).
+    ///
+    /// <para>
+    /// Pass <paramref name="memory"/> from
+    /// <see cref="SmartDocsMemoryRegistration"/> — either the self-hosted
+    /// <see cref="SmartDocsMemoryProvider"/> or the managed <c>Mem0Provider</c>; the
+    /// agent doesn't care which. Bind the tenant on the session before the first turn
+    /// (the self-hosted provider reads the user id from
+    /// <see cref="AgentSession.StateBag"/>).
+    /// </para>
+    /// </summary>
+    public static ChatClientAgent CreateWithMemory(
+        IChatClient chat,
+        AIContextProvider memory,
+        IRetriever vectorRetriever,
+        IRetriever? graphRetriever = null,
+        IRetriever? webRetriever = null)
+    {
+        ArgumentNullException.ThrowIfNull(chat);
+        ArgumentNullException.ThrowIfNull(memory);
+        ArgumentNullException.ThrowIfNull(vectorRetriever);
+
+        var tools = new List<AITool>
+        {
+            BuildVectorSearchTool(vectorRetriever),
+        };
+        if (graphRetriever is not null)
+        {
+            tools.Add(BuildGraphSearchTool(graphRetriever));
+        }
+        if (webRetriever is not null)
+        {
+            tools.Add(BuildWebSearchTool(webRetriever));
+        }
+
+        var options = new ChatClientAgentOptions
+        {
+            Name = "SmartDocs",
+            Description = "Contoso SmartDocs knowledge assistant",
+            ChatOptions = new ChatOptions
+            {
+                Instructions =
+                    "You are the Contoso SmartDocs assistant. Use the search tools to find relevant " +
+                    "context, then answer the user's question. Always cite sources using [Source N]. " +
+                    "If no tool returns useful context, reply: 'I don't know based on the available sources.'",
+                Tools = tools,
+            },
+            AIContextProviders = [memory],
         };
 
         return new ChatClientAgent(chat, options);

@@ -10,24 +10,34 @@ namespace SmartDocs.Agents;
 /// Ships two orchestration patterns side-by-side:
 ///
 /// <list type="bullet">
-///   <item><b>Magentic (default, MAF 1.5.0+)</b> — a Manager agent receives the
-///   question and drives the workers via tool calls. The Manager decides at
+///   <item><b>Agents-as-tools (LLM-as-manager)</b> — a Manager agent receives
+///   the question and drives the workers via tool calls. The Manager decides at
 ///   each turn which worker to invoke (Researcher, Analyst, FactChecker,
 ///   Writer), passes a directive, and consumes the worker's reply. Looping
 ///   and termination are the Manager's responsibility; the orchestration is
 ///   not pre-scripted. This is the recommended pattern when work shape
 ///   depends on intermediate findings (most real research tasks).</item>
 ///
-///   <item><b>Sequential (alternative)</b> — the four-agent linear pipeline
-///   we shipped in v1: Researcher → Analyst → FactChecker → Writer, with a
-///   loop-back from FactChecker to Researcher on unsupported claims. Simpler,
-///   more predictable, lower-latency. Use when the work shape is known
-///   ahead of time and you want zero Manager-side LLM overhead.</item>
+///   <item><b>Fixed Sequential pipeline</b> — the four-agent linear pipeline:
+///   Researcher → Analyst → FactChecker → Writer, with a loop-back from
+///   FactChecker to Researcher on unsupported claims. Simpler, more
+///   predictable, lower-latency. Use when the work shape is known ahead of
+///   time and you want zero Manager-side LLM overhead.</item>
 /// </list>
 ///
 /// Both entry points share the same four worker agents and the same
 /// retriever-backed <c>search</c> tool, so swapping patterns is a one-line
 /// change at the call site.
+///
+/// <para>
+/// Note: this is the <em>agents-as-tools</em> pattern; it is NOT MAF's built-in
+/// <c>Magentic</c> orchestration. The framework ships five built-in
+/// orchestrations — <c>Sequential</c>, <c>Concurrent</c>, <c>Handoff</c>,
+/// <c>GroupChat</c>, and <c>Magentic</c> — reach for those when you want the
+/// framework to own the topology (e.g. a manager-with-ledger via the built-in
+/// <c>Magentic</c> builder). Here the application owns it: a Manager agent that
+/// calls workers as functions.
+/// </para>
 /// </summary>
 public sealed class MultiAgentWorkflow
 {
@@ -80,20 +90,27 @@ public sealed class MultiAgentWorkflow
     }
 
     /// <summary>
-    /// Default entry point — runs the Magentic Manager-driven workflow.
-    /// Equivalent to calling <see cref="RunMagenticAsync"/>.
+    /// Default entry point — runs the agents-as-tools (LLM-as-manager) workflow.
+    /// Equivalent to calling <see cref="RunAgentsAsToolsAsync"/>.
     /// </summary>
     public Task<string> RunAsync(string question, CancellationToken cancellationToken = default)
-        => RunMagenticAsync(question, cancellationToken);
+        => RunAgentsAsToolsAsync(question, cancellationToken);
 
     /// <summary>
-    /// Magentic Manager-driven orchestration (MAF 1.5.0+).
+    /// Agents-as-tools (LLM-as-manager) orchestration.
     /// A Manager <see cref="ChatClientAgent"/> receives the question and
     /// drives the four worker agents via tool calls. The Manager picks the
     /// next worker at each step based on what it has seen so far; the
     /// orchestration shape is decided by the Manager, not by the application.
+    ///
+    /// <para>
+    /// This is the agents-as-tools pattern, not MAF's built-in <c>Magentic</c>
+    /// orchestration. The Manager is an ordinary agent whose tools happen to be
+    /// the worker agents; for a framework-owned manager-with-ledger, use MAF's
+    /// <c>Magentic</c> builder instead (see <see cref="MultiAgentWorkflow"/>).
+    /// </para>
     /// </summary>
-    public async Task<string> RunMagenticAsync(string question, CancellationToken cancellationToken = default)
+    public async Task<string> RunAgentsAsToolsAsync(string question, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
 
@@ -163,7 +180,7 @@ public sealed class MultiAgentWorkflow
     /// → Writer with a hard-coded loop-back from FactChecker to Researcher on
     /// NOT_SUPPORTED verdicts (max <see cref="MaxLoops"/> rounds).
     ///
-    /// Lower per-turn cost than Magentic (no Manager LLM call) and fully
+    /// Lower per-turn cost than agents-as-tools (no Manager LLM call) and fully
     /// deterministic in shape. Use when the work pattern is known ahead of
     /// time and you don't need the Manager's runtime planning.
     /// </summary>
