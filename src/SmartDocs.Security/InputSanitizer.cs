@@ -6,16 +6,21 @@ namespace SmartDocs.Security;
 public sealed record SanitizationResult(bool IsSafe, IReadOnlyList<string> Findings, string SafeInput);
 
 /// <summary>
-/// Heuristic sanitizer for user input — catches the OWASP AISVS C08
+/// Heuristic sanitizer for user input — catches the book's red-team
 /// reference patterns (direct prompt injection, role-play jailbreaks,
 /// system-prompt extraction). Length-bounded; strips zero-width and
 /// other control characters; collapses whitespace.
 /// </summary>
 public sealed partial class InputSanitizer
 {
+    /// <summary>
+    /// Maximum accepted input length in characters. Defaults to
+    /// 8,192 characters (8 KB) — the chapter rejects queries above 8 KB as a
+    /// cheap resource-exhaustion guard; anything longer is truncated and flagged.
+    /// </summary>
     public int MaxLength { get; }
 
-    public InputSanitizer(int maxLength = 2000)
+    public InputSanitizer(int maxLength = 8192)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxLength);
         MaxLength = maxLength;

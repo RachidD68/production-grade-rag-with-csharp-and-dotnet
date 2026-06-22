@@ -68,6 +68,22 @@
   <ItemGroup Label="LLM provider SDKs">
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageVersion Include="OpenAI" Version="2.11.0" />
+    <!-- NOTE (Ch 23): Azure AI Content Safety "Prompt Shields" is GA but, in
+         .NET, REST-only — there is NO ShieldPrompt method in any shipped
+         Azure.AI.ContentSafety NuGet (only 1.0.0-beta.1 / 1.0.0 exist, both
+         api-version 2023-10-01, which predates Prompt Shields). So
+         PromptShieldDetector is a thin typed HttpClient client over
+         POST .../contentsafety/text:shieldPrompt?api-version=2024-09-01 and
+         needs no SDK package. Do NOT re-add an Azure.AI.ContentSafety pin
+         expecting a Prompt Shields API — it isn't there. -->
+    <!-- Azure.Identity — keyless auth for the Ch 23 secure-Azure samples
+         (DefaultAzureCredential in dev → ManagedIdentityCredential in prod),
+         per the chapter's "no keys in config" guidance. Only the Ch23 Azure
+         samples reference it directly; the SmartDocs.Security library stays
+         credential-agnostic (PromptShieldDetector takes a caller-configured
+         HttpClient — endpoint + bearer/key header — so it needs no Azure SDK
+         package at all, just the built-in System.Net.Http + System.Text.Json). -->
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.VectorData — abstractions GA, connectors preview">

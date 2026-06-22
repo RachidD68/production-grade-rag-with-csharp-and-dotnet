@@ -21,6 +21,8 @@
     <Project Path="samples/Ch19_MultiAgentOrchestration/Ch19_MultiAgentOrchestration.csproj" />
     <Project Path="samples/Ch21_AotMcpServer/Ch21_AotMcpServer.csproj" />
     <Project Path="samples/Ch22_DriftAdapterMigration/Ch22_DriftAdapterMigration.csproj" />
+    <Project Path="samples/Ch23_SecureAzureRag/Ch23_SecureAzureRag.csproj" />
+    <Project Path="samples/Ch23_HumanInTheLoopApproval/Ch23_HumanInTheLoopApproval.csproj" />
     <Project Path="samples/Ch24_TrustByDesign/Ch24_TrustByDesign.csproj" />
   </Folder>
   <Folder Name="/src/">

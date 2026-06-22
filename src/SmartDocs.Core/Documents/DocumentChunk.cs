@@ -21,4 +21,11 @@ public sealed record DocumentChunk(
     string Text,
     int StartCharOffset,
     int EndCharOffset,
-    DocumentMetadata Metadata);
+    DocumentMetadata Metadata)
+{
+    /// <summary>
+    /// Optional provenance signature attached at ingest by IngestSanitizer;
+    /// null until signed.
+    /// </summary>
+    public string? Provenance { get; init; }
+}
