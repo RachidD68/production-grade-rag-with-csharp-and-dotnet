@@ -1,283 +1,223 @@
-// Chapter 22 — Drift Adapter Migration.
+// Chapter 22 — Drift-Adapter Migration.
 //
-// Demonstrates embedding drift detection and Procrustes alignment.
-// Generates two sets of synthetic embeddings simulating old vs new model
-// outputs, applies a known rotation + scaling to simulate drift, then
-// uses simplified Procrustes alignment to recover the original space.
-// Measures cosine similarity before and after alignment.
+// Demonstrates the Drift-Adapter as a cheaper alternative to a full re-embed
+// when an embedding model changes. A small SmartDocs corpus is indexed with an
+// "old" embedder. The provider then ships a "new" model whose geometry is the old
+// space under a fixed rotation (the everyday minor-version drift). Queries are
+// embedded with the new model, so they no longer line up with the old index.
+//
+// We train a DriftAdapter on a handful of (old, new) vector pairs — a real
+// Orthogonal-Procrustes solve via MathNet.Numerics — and apply it to the old
+// index vectors at query time, lifting them into the new model's space without
+// re-embedding the corpus. The recall table shows recall@3 recovering from the
+// un-adapted baseline toward the full-re-embed ceiling.
+//
+// Deterministic and offline: both embedders are stable FNV-1a bag-of-words stubs,
+// so the printed numbers reproduce run to run with no model or API key.
 //
 // Run:
 //   dotnet run --project samples/Ch22_DriftAdapterMigration
 
-const int NumVectors = 20;
-const int Dimensions = 32;
+using System.Text.RegularExpressions;
+using SmartDocs.Operations;
 
-Console.WriteLine("=== Ch22: Embedding Drift Detection & Procrustes Alignment ===");
+const int Dimensions = 64;
+const int K = 1;
+
+Console.WriteLine("=== Ch22: Drift-Adapter Migration (offline) ===");
 Console.WriteLine();
 
-var rng = new Random(42);
+// --- Corpus: 8 short SmartDocs snippets, each its own "document". --------------
+string[] corpus =
+[
+    "Employees receive twenty paid vacation days per fiscal year accrued monthly.",
+    "Sick leave is unlimited for employees in good standing with manager approval.",
+    "The retrieval service embeds the query then searches the vector index for matches.",
+    "Vector databases store dense embeddings and rank candidates by cosine similarity.",
+    "Quarterly financial reports are filed with the finance department by each office.",
+    "The Casablanca office handles regional contracts and legal document review.",
+    "Re-chunking shifts boundaries so old chunks must be deleted before re-indexing.",
+    "A drift adapter learns a rotation from an old embedding model to a new one.",
+];
 
-// Generate "old model" embeddings (ground truth).
-var oldEmbeddings = GenerateNormalizedVectors(rng, NumVectors, Dimensions);
+// Five gold queries, each mapped to the index of its single relevant document.
+(string Query, int Relevant)[] gold =
+[
+    ("how many vacation days do employees get", 0),
+    ("what is the sick leave policy", 1),
+    ("how does the retrieval service find matches", 2),
+    ("where are quarterly financial reports filed", 4),
+    ("what does a drift adapter learn", 7),
+];
 
-// Simulate "new model" drift: apply rotation + scaling.
-// This mimics what happens when a provider updates their embedding model.
-var rotationMatrix = GenerateRotationMatrix(rng, Dimensions, angleDegrees: 15.0);
-const float ScaleFactor = 1.08f; // 8% magnitude drift
-var newEmbeddings = ApplyDrift(oldEmbeddings, rotationMatrix, ScaleFactor);
+// --- Two embedders: old, and new = old-space under a fixed rotation. -----------
+var rotation = BuildRotation(Dimensions);
 
-// --- Measure drift ---
+float[] EmbedOld(string text) => BagOfWords(text, Dimensions);
+float[] EmbedNew(string text) => Normalize(Multiply(rotation, BagOfWords(text, Dimensions)));
 
-Console.WriteLine("--- Drift Detection ---");
-var prealignmentSims = MeasurePairwiseSimilarity(oldEmbeddings, newEmbeddings);
-Console.WriteLine($"  Mean cosine similarity (old vs drifted): {prealignmentSims.Mean:F4}");
-Console.WriteLine($"  Min cosine similarity:                   {prealignmentSims.Min:F4}");
-Console.WriteLine($"  Max cosine similarity:                   {prealignmentSims.Max:F4}");
-Console.WriteLine($"  Drift detected: {(prealignmentSims.Mean < 0.95 ? "YES" : "NO")} (threshold: 0.95)");
+// --- Index the corpus with the OLD embedder. -----------------------------------
+var oldIndex = corpus.Select(EmbedOld).ToArray();
+
+// --- Train the Drift-Adapter on (old, new) pairs from the corpus. --------------
+// In production the pairs come from re-embedding a sample of documents with both
+// models; here every corpus item is a pair.
+var adapter = new DriftAdapter();
+adapter.Train(
+    corpus.Select(t => new ReadOnlyMemory<float>(EmbedOld(t))).ToArray(),
+    corpus.Select(t => new ReadOnlyMemory<float>(EmbedNew(t))).ToArray());
+
+// Adapt the old index into the new model's space, once, at migration time.
+var adaptedIndex = oldIndex.Select(v => adapter.Apply(v)).ToArray();
+
+// The full-re-embed ceiling: what recall would be if we re-embedded everything.
+var reembeddedIndex = corpus.Select(EmbedNew).ToArray();
+
+// --- Evaluate recall@K for three strategies. -----------------------------------
+// Queries are always embedded with the NEW model (the migration has happened).
+var newQueries = gold.Select(g => EmbedNew(g.Query)).ToArray();
+
+double baseline = Recall(newQueries, oldIndex, gold, K);       // new query vs old index (no fix)
+double adapted = Recall(newQueries, adaptedIndex, gold, K);    // new query vs adapted old index
+double reembed = Recall(newQueries, reembeddedIndex, gold, K); // new query vs fully re-embedded index
+
+Console.WriteLine($"Corpus: {corpus.Length} documents | Gold queries: {gold.Length} | recall@{K}");
 Console.WriteLine();
-
-// --- Procrustes alignment ---
-
-Console.WriteLine("--- Procrustes Alignment ---");
-Console.WriteLine("  Computing alignment transform from anchor pairs...");
-
-// Use first 10 vectors as anchor pairs (known correspondences).
-const int AnchorCount = 10;
-var alignmentTransform = ComputeProcrustesAlignment(
-    oldEmbeddings[..AnchorCount],
-    newEmbeddings[..AnchorCount],
-    Dimensions);
-
-// Apply alignment to ALL new embeddings.
-var alignedEmbeddings = ApplyAlignment(newEmbeddings, alignmentTransform, Dimensions);
-
-// --- Measure post-alignment quality ---
-
-var postAlignmentSims = MeasurePairwiseSimilarity(oldEmbeddings, alignedEmbeddings);
+Console.WriteLine($"{"strategy",-34}{$"recall@{K}",10}");
+Console.WriteLine(new string('-', 44));
+Console.WriteLine($"{"new query vs OLD index (no fix)",-34}{baseline,10:P0}");
+Console.WriteLine($"{"new query vs DRIFT-ADAPTED index",-34}{adapted,10:P0}");
+Console.WriteLine($"{"new query vs FULL RE-EMBED (ceiling)",-34}{reembed,10:P0}");
 Console.WriteLine();
-Console.WriteLine("--- Post-Alignment Metrics ---");
-Console.WriteLine($"  Mean cosine similarity (old vs aligned): {postAlignmentSims.Mean:F4}");
-Console.WriteLine($"  Min cosine similarity:                   {postAlignmentSims.Min:F4}");
-Console.WriteLine($"  Max cosine similarity:                   {postAlignmentSims.Max:F4}");
-Console.WriteLine($"  Drift resolved: {(postAlignmentSims.Mean >= 0.95 ? "YES" : "NO")}");
-Console.WriteLine();
+Console.WriteLine(
+    adapted > baseline
+        ? $"The Drift-Adapter recovers recall from {baseline:P0} to {adapted:P0} without re-embedding the corpus."
+        : "No recovery observed (check the rotation / pairs).");
+return 0;
 
-// --- Summary ---
+// --- Helpers -------------------------------------------------------------------
 
-Console.WriteLine("--- Summary ---");
-Console.WriteLine($"  Pre-alignment mean similarity:  {prealignmentSims.Mean:F4}");
-Console.WriteLine($"  Post-alignment mean similarity: {postAlignmentSims.Mean:F4}");
-Console.WriteLine($"  Improvement:                    {postAlignmentSims.Mean - prealignmentSims.Mean:+F4}");
-Console.WriteLine();
-Console.WriteLine("  Procrustes alignment recovers the original embedding space");
-Console.WriteLine("  without re-embedding the entire corpus.");
-return;
-
-// --- Implementation ---
-
-static float[][] GenerateNormalizedVectors(Random rng, int count, int dims)
+static double Recall(float[][] queries, float[][] index, (string Query, int Relevant)[] gold, int k)
 {
-    var vectors = new float[count][];
-    for (var i = 0; i < count; i++)
+    int hits = 0;
+    for (int q = 0; q < queries.Length; q++)
     {
-        var vec = new float[dims];
-        for (var d = 0; d < dims; d++)
+        var topK = Enumerable.Range(0, index.Length)
+            .Select(i => (Doc: i, Score: Cosine(queries[q], index[i])))
+            .OrderByDescending(x => x.Score)
+            .Take(k)
+            .Select(x => x.Doc)
+            .ToHashSet();
+        if (topK.Contains(gold[q].Relevant))
         {
-            vec[d] = (float)NextGaussian(rng);
+            hits++;
         }
-
-        Normalize(vec);
-        vectors[i] = vec;
     }
 
-    return vectors;
+    return (double)hits / queries.Length;
 }
 
-static float[,] GenerateRotationMatrix(Random rng, int dims, double angleDegrees)
+// Deterministic FNV-1a bag-of-words embedder (same recipe as the Ch08 sample).
+static float[] BagOfWords(string text, int dims)
 {
-    // Simplified: apply Givens rotations in pairs of dimensions.
-    var matrix = new float[dims, dims];
-
-    // Start with identity.
-    for (var i = 0; i < dims; i++)
+    var vec = new float[dims];
+    foreach (Match m in WordRegex().Matches(text.ToLowerInvariant()))
     {
-        matrix[i, i] = 1.0f;
+        vec[(int)(Fnv1a(m.Value) % (uint)dims)] += 1f;
     }
 
-    // Apply rotation in pairs of dimensions.
-    var angleRad = angleDegrees * Math.PI / 180.0;
-
-    for (var i = 0; i < dims - 1; i += 2)
-    {
-        var perturbation = (float)(rng.NextDouble() * 0.3 * angleRad);
-        var c = (float)Math.Cos(angleRad + perturbation);
-        var s = (float)Math.Sin(angleRad + perturbation);
-        matrix[i, i] = c;
-        matrix[i, i + 1] = -s;
-        matrix[i + 1, i] = s;
-        matrix[i + 1, i + 1] = c;
-    }
-
-    return matrix;
+    return Normalize(vec);
 }
 
-static float[][] ApplyDrift(float[][] vectors, float[,] rotation, float scale)
+// A fixed, deterministic rotation: a product of Givens rotations over dimension
+// pairs by a constant angle, seeded so the matrix is identical every run.
+static float[,] BuildRotation(int dims)
 {
-    var dims = vectors[0].Length;
-    var result = new float[vectors.Length][];
-
-    for (var v = 0; v < vectors.Length; v++)
-    {
-        var transformed = new float[dims];
-        for (var i = 0; i < dims; i++)
-        {
-            var sum = 0f;
-            for (var j = 0; j < dims; j++)
-            {
-                sum += rotation[i, j] * vectors[v][j];
-            }
-
-            transformed[i] = sum * scale;
-        }
-
-        Normalize(transformed);
-        result[v] = transformed;
-    }
-
-    return result;
-}
-
-static float[,] ComputeProcrustesAlignment(float[][] source, float[][] target, int dims)
-{
-    // Simplified Procrustes: compute the best rotation mapping source -> target.
-    // M = target^T * source, then iterative normalization to approximate orthogonal.
-
     var m = new float[dims, dims];
-
-    // M = sum of outer products: target_i * source_i^T
-    for (var k = 0; k < source.Length; k++)
+    for (int i = 0; i < dims; i++)
     {
-        for (var i = 0; i < dims; i++)
-        {
-            for (var j = 0; j < dims; j++)
-            {
-                m[i, j] += target[k][i] * source[k][j];
-            }
-        }
+        m[i, i] = 1f;
     }
 
-    // Approximate orthogonal Procrustes via iterative row/column normalization.
-    for (var iter = 0; iter < 20; iter++)
+    const float Angle = 1.2f; // radians, ~69° — a large drift so the un-adapted baseline breaks
+    var c = MathF.Cos(Angle);
+    var s = MathF.Sin(Angle);
+    for (int i = 0; i + 1 < dims; i += 2)
     {
-        // Normalize rows.
-        for (var i = 0; i < dims; i++)
-        {
-            var rowMag = 0f;
-            for (var j = 0; j < dims; j++)
-            {
-                rowMag += m[i, j] * m[i, j];
-            }
-
-            rowMag = MathF.Sqrt(rowMag);
-            if (rowMag > 1e-8f)
-            {
-                for (var j = 0; j < dims; j++)
-                {
-                    m[i, j] /= rowMag;
-                }
-            }
-        }
-
-        // Normalize columns.
-        for (var j = 0; j < dims; j++)
-        {
-            var colMag = 0f;
-            for (var i = 0; i < dims; i++)
-            {
-                colMag += m[i, j] * m[i, j];
-            }
-
-            colMag = MathF.Sqrt(colMag);
-            if (colMag > 1e-8f)
-            {
-                for (var i = 0; i < dims; i++)
-                {
-                    m[i, j] /= colMag;
-                }
-            }
-        }
+        // Rotate the (i, i+1) plane.
+        var rii = m[i, i];
+        var ri1 = m[i, i + 1];
+        var r1i = m[i + 1, i];
+        var r11 = m[i + 1, i + 1];
+        m[i, i] = c * rii - s * r1i;
+        m[i, i + 1] = c * ri1 - s * r11;
+        m[i + 1, i] = s * rii + c * r1i;
+        m[i + 1, i + 1] = s * ri1 + c * r11;
     }
 
     return m;
 }
 
-static float[][] ApplyAlignment(float[][] vectors, float[,] transform, int dims)
+static float[] Multiply(float[,] matrix, float[] v)
 {
-    var result = new float[vectors.Length][];
-
-    for (var v = 0; v < vectors.Length; v++)
+    int n = v.Length;
+    var result = new float[n];
+    for (int i = 0; i < n; i++)
     {
-        var aligned = new float[dims];
-        for (var i = 0; i < dims; i++)
+        float acc = 0f;
+        for (int j = 0; j < n; j++)
         {
-            var sum = 0f;
-            for (var j = 0; j < dims; j++)
-            {
-                sum += transform[i, j] * vectors[v][j];
-            }
-
-            aligned[i] = sum;
+            acc += matrix[i, j] * v[j];
         }
 
-        Normalize(aligned);
-        result[v] = aligned;
+        result[i] = acc;
     }
 
     return result;
 }
 
-static (float Mean, float Min, float Max) MeasurePairwiseSimilarity(float[][] a, float[][] b)
+static float[] Normalize(float[] v)
 {
-    var sims = new float[a.Length];
-    for (var i = 0; i < a.Length; i++)
-    {
-        sims[i] = CosineSimilarity(a[i], b[i]);
-    }
-
-    return (sims.Average(), sims.Min(), sims.Max());
-}
-
-static float CosineSimilarity(float[] a, float[] b)
-{
-    var dot = 0f;
-    var magA = 0f;
-    var magB = 0f;
-    for (var i = 0; i < a.Length; i++)
-    {
-        dot += a[i] * b[i];
-        magA += a[i] * a[i];
-        magB += b[i] * b[i];
-    }
-
-    return dot / (MathF.Sqrt(magA) * MathF.Sqrt(magB));
-}
-
-static void Normalize(float[] vec)
-{
-    var mag = MathF.Sqrt(vec.Sum(v => v * v));
+    var mag = MathF.Sqrt(v.Sum(x => x * x));
     if (mag > 1e-8f)
     {
-        for (var i = 0; i < vec.Length; i++)
+        for (int i = 0; i < v.Length; i++)
         {
-            vec[i] /= mag;
+            v[i] /= mag;
         }
     }
+
+    return v;
 }
 
-static double NextGaussian(Random rng)
+static float Cosine(float[] a, float[] b)
 {
-    // Box-Muller transform.
-    var u1 = 1.0 - rng.NextDouble();
-    var u2 = rng.NextDouble();
-    return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
+    float dot = 0f, ma = 0f, mb = 0f;
+    for (int i = 0; i < a.Length; i++)
+    {
+        dot += a[i] * b[i];
+        ma += a[i] * a[i];
+        mb += b[i] * b[i];
+    }
+
+    var denom = MathF.Sqrt(ma) * MathF.Sqrt(mb);
+    return denom > 1e-8f ? dot / denom : 0f;
+}
+
+static uint Fnv1a(string s)
+{
+    uint hash = 2166136261;
+    foreach (var ch in s)
+    {
+        hash ^= ch;
+        hash *= 16777619;
+    }
+
+    return hash;
+}
+
+internal static partial class Program
+{
+    [GeneratedRegex(@"[a-z0-9][a-z0-9\-]+", RegexOptions.CultureInvariant)]
+    private static partial Regex WordRegex();
 }

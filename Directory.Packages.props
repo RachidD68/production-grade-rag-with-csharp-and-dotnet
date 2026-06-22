@@ -192,6 +192,10 @@
     <PackageVersion Include="Testcontainers.Ollama" Version="4.11.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Numerics (Ch 22 DriftAdapter — Orthogonal Procrustes via SVD)">
+    <PackageVersion Include="MathNet.Numerics" Version="5.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Benchmarking">
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>

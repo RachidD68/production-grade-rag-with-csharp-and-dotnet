@@ -5,6 +5,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <!-- Orthogonal Procrustes solve in DriftAdapter (Ch 22): SVD of the
+         cross-covariance matrix. Pinned centrally at 5.0.0. -->
+    <PackageReference Include="MathNet.Numerics" />
   </ItemGroup>
 
   <ItemGroup>

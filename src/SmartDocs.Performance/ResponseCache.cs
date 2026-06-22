@@ -27,6 +27,7 @@ public sealed class ResponseCache : IRagPipeline
 
     private readonly IRagPipeline _inner;
     private readonly IDistributedCache _cache;
+    private readonly CachedDependencyTracker? _dependencies;
 
     /// <summary>The default time-to-live applied to cached responses.</summary>
     public TimeSpan Ttl { get; }
@@ -35,12 +36,23 @@ public sealed class ResponseCache : IRagPipeline
     /// <param name="inner">The pipeline to invoke on a cache miss.</param>
     /// <param name="cache">The distributed cache holding serialised responses.</param>
     /// <param name="ttl">Time-to-live for cached entries. Defaults to 10 minutes.</param>
-    public ResponseCache(IRagPipeline inner, IDistributedCache cache, TimeSpan? ttl = null)
+    /// <param name="dependencies">
+    /// Optional reverse-dependency index (Ch 22). When supplied, each stored entry
+    /// registers the chunk ids it cited, so a later
+    /// <see cref="CacheInvalidator.InvalidateForDocumentAsync"/> can evict it when a
+    /// source document changes. <see langword="null"/> keeps the Ch 21 behaviour.
+    /// </param>
+    public ResponseCache(
+        IRagPipeline inner,
+        IDistributedCache cache,
+        TimeSpan? ttl = null,
+        CachedDependencyTracker? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(cache);
         _inner = inner;
         _cache = cache;
+        _dependencies = dependencies;
         Ttl = ttl ?? TimeSpan.FromMinutes(10);
     }
 
@@ -123,6 +135,10 @@ public sealed class ResponseCache : IRagPipeline
 
     private Task SetAsync(string key, RagResponse response, CancellationToken ct)
     {
+        // Register the chunks this answer cited so a later document change can
+        // evict the entry through the dependency tracker (Ch 22).
+        _dependencies?.RegisterEntry(key, response.Sources.Select(s => s.Chunk.ChunkId));
+
         var bytes = JsonSerializer.SerializeToUtf8Bytes(response, SerializerOptions);
         var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = Ttl };
         return _cache.SetAsync(key, bytes, options, ct);

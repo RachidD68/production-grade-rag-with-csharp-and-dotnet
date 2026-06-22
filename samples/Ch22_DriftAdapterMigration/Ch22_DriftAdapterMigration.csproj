@@ -6,4 +6,8 @@
     <AssemblyName>Ch22_DriftAdapterMigration</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Operations\SmartDocs.Operations.csproj" />
+  </ItemGroup>
+
 </Project>

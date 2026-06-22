@@ -3,11 +3,13 @@ using SmartDocs.Core.Abstractions;
 namespace SmartDocs.Operations;
 
 /// <summary>
-/// GDPR Article 17 deletion pipeline. Tombstones the document id, then
-/// hard-deletes from each registered store (vector, graph, audit log) and
-/// emits a court-acceptable audit trail entry. The full Ch 24 audit-log
-/// shape ships in <c>SmartDocs.Generation</c>; this class only
-/// surfaces the high-level orchestration for Ch 22.
+/// GDPR Article 17 deletion pipeline. Hard-deletes the subject's chunks from the
+/// vector store and the subject's entities from the graph, then emits a
+/// court-acceptable audit-trail entry. This is a true hard delete
+/// (<c>IVectorStore.DeleteAsync</c>), not a tombstone — the rows are gone, not
+/// flagged — which is what Article 17 erasure requires. The full Ch 24 audit-log
+/// shape ships in <c>SmartDocs.Generation</c>; this class only surfaces the
+/// high-level orchestration for Ch 22.
 /// </summary>
 public sealed class GdprDeletionPipeline
 {

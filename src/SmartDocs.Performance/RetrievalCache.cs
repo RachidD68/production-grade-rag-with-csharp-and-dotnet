@@ -26,6 +26,7 @@ public sealed class RetrievalCache : IRetriever
 
     private readonly IRetriever _inner;
     private readonly IDistributedCache _cache;
+    private readonly CachedDependencyTracker? _dependencies;
 
     /// <summary>The time-to-live applied to cached retrieval results.</summary>
     public TimeSpan Ttl { get; }
@@ -34,12 +35,23 @@ public sealed class RetrievalCache : IRetriever
     /// <param name="inner">The retriever to invoke on a cache miss.</param>
     /// <param name="cache">The distributed cache holding serialised result lists.</param>
     /// <param name="ttl">Time-to-live for cached entries. Defaults to 5 minutes.</param>
-    public RetrievalCache(IRetriever inner, IDistributedCache cache, TimeSpan? ttl = null)
+    /// <param name="dependencies">
+    /// Optional reverse-dependency index (Ch 22). When supplied, each stored result
+    /// list registers the chunk ids it returned, so a later
+    /// <see cref="CacheInvalidator.InvalidateForDocumentAsync"/> can evict it when a
+    /// source document changes. <see langword="null"/> keeps the Ch 21 behaviour.
+    /// </param>
+    public RetrievalCache(
+        IRetriever inner,
+        IDistributedCache cache,
+        TimeSpan? ttl = null,
+        CachedDependencyTracker? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(inner);
         ArgumentNullException.ThrowIfNull(cache);
         _inner = inner;
         _cache = cache;
+        _dependencies = dependencies;
         Ttl = ttl ?? TimeSpan.FromMinutes(5);
     }
 
@@ -67,6 +79,11 @@ public sealed class RetrievalCache : IRetriever
         }
 
         var fresh = await _inner.RetrieveAsync(query, topK, cancellationToken).ConfigureAwait(false);
+
+        // Register the chunks this result list returned so a later document change
+        // can evict the entry through the dependency tracker (Ch 22).
+        _dependencies?.RegisterEntry(key, fresh.Select(r => r.Chunk.ChunkId));
+
         var payload = JsonSerializer.SerializeToUtf8Bytes(fresh, SerializerOptions);
         var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = Ttl };
         await _cache.SetAsync(key, payload, options, cancellationToken).ConfigureAwait(false);
