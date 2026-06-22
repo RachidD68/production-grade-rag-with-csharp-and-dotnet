@@ -12,6 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SmartDocs.Core\SmartDocs.Core.csproj" />
     <ProjectReference Include="..\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\SmartDocs.Reranking\SmartDocs.Reranking.csproj" />
+    <ProjectReference Include="..\SmartDocs.Routing\SmartDocs.Routing.csproj" />
   </ItemGroup>
 
 </Project>

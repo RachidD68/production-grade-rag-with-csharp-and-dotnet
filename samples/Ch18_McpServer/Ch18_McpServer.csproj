@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>RagInDotNet.Samples.Ch18_McpServer</RootNamespace>
+    <AssemblyName>Ch18_McpServer</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Agents.AI" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Reranking\SmartDocs.Reranking.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Routing\SmartDocs.Routing.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Mcp\SmartDocs.Mcp.csproj" />
+  </ItemGroup>
+
+</Project>

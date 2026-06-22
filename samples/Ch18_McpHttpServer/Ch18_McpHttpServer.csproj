@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>RagInDotNet.Samples.Ch18_McpHttpServer</RootNamespace>
+    <AssemblyName>Ch18_McpHttpServer</AssemblyName>
+  </PropertyGroup>
+
+  <!-- Reuse the offline pipeline (corpus, stubs, DI composition) from the stdio
+       sample so the two hosts stay in dev/prod parity over the same corpus. Only
+       the transport and the ITenantContext differ between them. -->
+  <ItemGroup>
+    <Compile Include="..\Ch18_McpServer\Corpus.cs" Link="Shared\Corpus.cs" />
+    <Compile Include="..\Ch18_McpServer\Stubs.cs" Link="Shared\Stubs.cs" />
+    <Compile Include="..\Ch18_McpServer\SmartDocsComposition.cs" Link="Shared\SmartDocsComposition.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDocs.Core\SmartDocs.Core.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Ingestion\SmartDocs.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Reranking\SmartDocs.Reranking.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Routing\SmartDocs.Routing.csproj" />
+    <ProjectReference Include="..\..\src\SmartDocs.Mcp\SmartDocs.Mcp.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -11,6 +11,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Azure.Search.Documents" />
+    <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartDocs.Api\SmartDocs.Api.csproj" />
     <ProjectReference Include="..\..\src\SmartDocs.Retrieval\SmartDocs.Retrieval.csproj" />
+    <ProjectReference Include="..\..\samples\Ch18_McpHttpServer\Ch18_McpHttpServer.csproj" Aliases="McpHttp" />
   </ItemGroup>
 
 </Project>
