@@ -42,7 +42,10 @@ public static class ComparisonMetrics
             throw new ArgumentOutOfRangeException(nameof(percentile), percentile, "Percentile must be in [0, 100].");
         }
 
-        var sorted = samples.OrderBy(static x => x).ToArray();
+        // Copy then in-place Array.Sort (introsort) — avoids the LINQ OrderBy
+        // enumerator + stable-sort overhead in this measurement helper.
+        var sorted = samples.ToArray();
+        Array.Sort(sorted);
         if (sorted.Length == 1)
         {
             return sorted[0];

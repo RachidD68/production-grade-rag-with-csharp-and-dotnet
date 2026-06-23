@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using SmartDocs.Core.Abstractions;
 using SmartDocs.Core.Documents;
 
@@ -26,19 +27,25 @@ public enum RagStreamEventKind { Sources, Token, Done, Error }
 /// <see cref="AskAsync"/> and a streaming
 /// <see cref="AskStreamingAsync"/> are surfaced.
 /// </summary>
-public sealed class RagPipeline : IRagPipeline
+public sealed partial class RagPipeline : IRagPipeline
 {
     // Generic, non-leaking message put on the wire when a stage faults. The
     // real exception is never surfaced to the browser (it could echo a poisoned
-    // chunk or internal detail); callers should log it server-side instead.
+    // chunk or internal detail) — it is logged server-side instead (the injected
+    // ILogger; the OpenTelemetry pipeline also records it on the active span).
     private const string StreamFailedMessage = "The answer could not be generated. Please try again.";
 
     private readonly IRetriever _retriever;
     private readonly PromptTemplateEngine _promptEngine;
     private readonly IChatClient _chat;
+    private readonly ILogger? _logger;
     public int TopK { get; set; } = 5;
 
-    public RagPipeline(IRetriever retriever, PromptTemplateEngine promptEngine, IChatClient chat)
+    public RagPipeline(
+        IRetriever retriever,
+        PromptTemplateEngine promptEngine,
+        IChatClient chat,
+        ILogger<RagPipeline>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(retriever);
         ArgumentNullException.ThrowIfNull(promptEngine);
@@ -46,6 +53,7 @@ public sealed class RagPipeline : IRagPipeline
         _retriever = retriever;
         _promptEngine = promptEngine;
         _chat = chat;
+        _logger = logger;
     }
 
     public async Task<RagResponse> AskAsync(string question, CancellationToken ct = default)
@@ -85,8 +93,12 @@ public sealed class RagPipeline : IRagPipeline
         {
             throw;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            if (_logger is { } log)
+            {
+                Log.PrepFailed(log, ex);
+            }
             prompt = string.Empty;
             used = Array.Empty<RetrievalResult>();
             prepFailed = true;
@@ -129,8 +141,12 @@ public sealed class RagPipeline : IRagPipeline
                 {
                     throw;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    if (_logger is { } log)
+                    {
+                        Log.StreamFaulted(log, ex);
+                    }
                     tokenEvent = null;
                     faulted = true;
                 }
@@ -150,5 +166,14 @@ public sealed class RagPipeline : IRagPipeline
         }
 
         yield return new RagStreamEvent(RagStreamEventKind.Done);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "RAG streaming request failed during retrieve/augment; surfacing a generic error event.")]
+        public static partial void PrepFailed(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "RAG streaming generation faulted mid-stream; surfacing a generic error event.")]
+        public static partial void StreamFaulted(ILogger logger, Exception ex);
     }
 }

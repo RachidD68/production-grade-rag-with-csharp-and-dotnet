@@ -59,15 +59,28 @@ public sealed class QdrantVectorStore : IVectorStore
 
     public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
     {
-        var exists = await _client.CollectionExistsAsync(CollectionName, cancellationToken).ConfigureAwait(false);
-        if (exists)
+        if (await _client.CollectionExistsAsync(CollectionName, cancellationToken).ConfigureAwait(false))
         {
             return;
         }
-        await _client.CreateCollectionAsync(
-            CollectionName,
-            BuildVectorParams(_vectorSize, _distance, _useScalarQuantization),
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _client.CreateCollectionAsync(
+                CollectionName,
+                BuildVectorParams(_vectorSize, _distance, _useScalarQuantization),
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Idempotent creation: in a scaled-out deployment another instance can
+            // create the collection between the existence check above and this
+            // call (a TOCTOU race). Re-verify — swallow only if it now exists;
+            // otherwise the failure was real and must propagate.
+            if (!await _client.CollectionExistsAsync(CollectionName, cancellationToken).ConfigureAwait(false))
+            {
+                throw;
+            }
+        }
     }
 
     /// <summary>

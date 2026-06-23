@@ -120,22 +120,27 @@ public sealed partial class BatchEmbeddingPipeline
         using var gate = new SemaphoreSlim(maxConcurrency, maxConcurrency);
         var results = new EmbeddedChunk[batches.Count][];
         var tasks = new Task[batches.Count];
+        async Task EmbedBatchUnderGate(int idx)
+        {
+            try
+            {
+                results[idx] = await EmbedBatchAsync(batches[idx], cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
         for (int i = 0; i < batches.Count; i++)
         {
-            var index = i;
-            var batch = batches[index];
-            tasks[index] = Task.Run(async () =>
-            {
-                await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    results[index] = await EmbedBatchAsync(batch, cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    gate.Release();
-                }
-            }, cancellationToken);
+            // Acquire the gate BEFORE starting the work so no more than
+            // MaxConcurrency provider calls are ever in flight. EmbedBatchAsync is
+            // I/O-bound (a provider HTTP call), so there is no CPU work to offload
+            // onto the ThreadPool — start it directly rather than via Task.Run,
+            // which would queue every batch up front only to park it on the gate.
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            tasks[i] = EmbedBatchUnderGate(i);
         }
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
