@@ -13,7 +13,7 @@
 //   Kernel.CreateBuilder().Add* + .Build()  |  IChatClient (via M.E.AI) + ChatClientAgent
 //   [KernelFunction] on a method            |  AIFunctionFactory.Create(method, name, ...)
 //   kernel.Plugins.AddFromObject(plugin)    |  ChatClientAgentOptions.ChatOptions.Tools = [...]
-//   ChatHistory                             |  AgentThread (agent.GetNewThread())
+//   ChatHistory                             |  AgentSession (agent.CreateSessionAsync())
 //   KernelArguments                         |  AgentRunOptions (passed to RunAsync)
 //   IChatCompletionService.GetChat...Async  |  agent.RunAsync(...) / RunStreamingAsync(...)
 //
