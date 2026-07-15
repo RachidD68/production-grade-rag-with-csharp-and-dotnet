@@ -6,7 +6,7 @@
 //   1. Ingest a small corpus that includes one user's content, signing each
 //      chunk's provenance with the Ch 23 HMAC signer.
 //   2. Run a couple of grounded queries and log them to the EU AI Act audit log.
-//   3. Honour a GDPR Article 17 erasure request via the Ch 22 deletion pipeline.
+//   3. Honor a GDPR Article 17 erasure request via the Ch 22 deletion pipeline.
 //   4. Show the signed ErasureReceipt (chapter JSON shape) and verify it.
 //   5. Trace a historical answer back to its sources with CitationAuditor,
 //      proving each cited chunk's provenance signature.
@@ -140,7 +140,7 @@ await RunQueryAsync("q-1002", "How far in advance must I request vacation?",
     "Vacation requests must be submitted at least two weeks in advance. [Source 1]", "hr-001#1", sourceIndex: 1);
 Console.WriteLine();
 
-// --- 3. Honour a GDPR Article 17 erasure request for alice ---
+// --- 3. Honor a GDPR Article 17 erasure request for alice ---
 
 Console.WriteLine("--- GDPR erasure (Ch 22 pipeline) ---");
 var receivedAt = DateTimeOffset.UtcNow.AddMinutes(-5);

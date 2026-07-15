@@ -82,7 +82,7 @@ var strategies = new IIndexingStrategy[]
     new QueryIndexingStrategy(chat, questionsPerChunk: 3),
 };
 
-// The production wiring readers will recognise: pick a strategy per document
+// The production wiring readers will recognize: pick a strategy per document
 // type, falling back to plain chunk indexing. Shown once for fidelity to the
 // chapter; the measured comparison below runs each strategy on its own.
 var pipeline = new IndexingPipelineBuilder()

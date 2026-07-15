@@ -8,7 +8,7 @@ namespace SmartDocs.Reranking.Onnx;
 /// <summary>
 /// A genuine ONNX cross-encoder over <c>BAAI/bge-reranker-v2-m3</c> — the
 /// real self-hosted inference path behind <see cref="ICrossEncoderModel"/>.
-/// Tokenises each (query, document) pair into the XLM-RoBERTa pair encoding,
+/// Tokenizes each (query, document) pair into the XLM-RoBERTa pair encoding,
 /// batches the pairs through the ONNX session, and maps the single relevance
 /// logit per pair to a probability in <c>[0, 1]</c> with a sigmoid.
 /// <para>

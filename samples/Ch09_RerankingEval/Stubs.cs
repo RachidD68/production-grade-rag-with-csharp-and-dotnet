@@ -7,7 +7,7 @@ namespace RagInDotNet.Samples.Ch09_RerankingEval;
 
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
-/// Hashes each word into a fixed-width vector and unit-normalises, so the same
+/// Hashes each word into a fixed-width vector and unit-normalizes, so the same
 /// text always yields the same vector with no model or API key — making the
 /// metrics this sample prints reproducible run to run.
 ///
@@ -15,7 +15,7 @@ namespace RagInDotNet.Samples.Ch09_RerankingEval;
 /// Copied — deliberately, not referenced — from the Chapter 8 sample so the two
 /// harnesses stay independent. The critical detail is <see cref="StableHash"/>:
 /// a process-independent FNV-1a hash, never <c>string.GetHashCode</c> (which is
-/// randomised per process and would make the numbers non-deterministic).
+/// randomized per process and would make the numbers non-deterministic).
 /// </para>
 /// </summary>
 internal sealed partial class BagOfWordsEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>
@@ -53,7 +53,7 @@ internal sealed partial class BagOfWordsEmbeddingGenerator : IEmbeddingGenerator
         var vec = new float[Dimensions];
         foreach (Match m in WordRegex().Matches(text.ToLowerInvariant()))
         {
-            // Stable FNV-1a hash, NOT string.GetHashCode (which is randomised
+            // Stable FNV-1a hash, NOT string.GetHashCode (which is randomized
             // per process), so the numbers this sample prints reproduce run to run.
             vec[(int)(StableHash(m.Value) % Dimensions)] += 1f;
         }

@@ -12,7 +12,7 @@ namespace SmartDocs.Operations;
 /// This is a real <strong>Orthogonal Procrustes</strong> solve (no longer the
 /// Phase-5 identity placeholder). Given <em>N</em> paired vectors — the same
 /// texts embedded by the old model (rows of <c>A</c>) and the new model (rows of
-/// <c>B</c>) — it finds the rotation <c>R</c> minimising
+/// <c>B</c>) — it finds the rotation <c>R</c> minimizing
 /// <c>‖A·R − B‖_F</c>:
 /// </para>
 /// <list type="number">
@@ -21,7 +21,7 @@ namespace SmartDocs.Operations;
 ///   <item><description>The optimal rotation is <c>R = U·Vᵀ</c> (the closed-form Procrustes solution).</description></item>
 /// </list>
 /// <para>
-/// <see cref="Apply"/> multiplies a query vector by <c>R</c> and re-normalises the
+/// <see cref="Apply"/> multiplies a query vector by <c>R</c> and re-normalizes the
 /// result to unit length, because cosine similarity assumes unit vectors (Ch 22
 /// §6). The map is a same-dimension rotation: it cannot up-project a smaller old
 /// space into a larger new one, so a dimension change (e.g. 1536 → 3072) must be
@@ -93,11 +93,11 @@ public sealed class DriftAdapter
     }
 
     /// <summary>
-    /// Apply the trained rotation to a new query vector and re-normalise the result
+    /// Apply the trained rotation to a new query vector and re-normalize the result
     /// to unit length (cosine similarity assumes unit vectors).
     /// </summary>
     /// <param name="queryVector">The query embedding to rotate into the old space.</param>
-    /// <returns>The rotated, unit-normalised vector.</returns>
+    /// <returns>The rotated, unit-normalized vector.</returns>
     /// <exception cref="InvalidOperationException">Thrown if <see cref="Train"/> has not run.</exception>
     /// <exception cref="ArgumentException">Thrown if the query dimension differs from the trained dimension.</exception>
     public float[] Apply(ReadOnlyMemory<float> queryVector)

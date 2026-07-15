@@ -13,7 +13,7 @@ namespace SmartDocs.Security.Ingestion;
 ///   <item>Otherwise the chunk is stamped with a provenance signature
 ///   (<see cref="DocumentChunk.Provenance"/>) and returned for indexing.</item>
 /// </list>
-/// This is the defence against indirect / planted-document prompt injection: a
+/// This is the defense against indirect / planted-document prompt injection: a
 /// poisoned document is stopped at the door rather than at query time.
 /// </summary>
 public sealed class IngestSanitizer

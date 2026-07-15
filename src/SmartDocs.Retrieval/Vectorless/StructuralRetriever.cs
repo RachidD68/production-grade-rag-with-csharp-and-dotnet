@@ -188,7 +188,7 @@ public sealed class StructuralRetriever : IRetriever
     {
         var prompt =
             "Extract a structural identifier (e.g. \"GDPR/Art17\", \"Art17\", \"§17\") if the user named " +
-            "one; otherwise summarise the topic. Reply as JSON: " +
+            "one; otherwise summarize the topic. Reply as JSON: " +
             "{ \"explicitId\": string|null, \"topic\": string|null }.\n\n" +
             $"Question: {query}";
 

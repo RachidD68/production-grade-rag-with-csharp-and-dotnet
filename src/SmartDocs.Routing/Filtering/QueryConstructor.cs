@@ -19,7 +19,7 @@ public sealed record ExtractedFilter
 /// <summary>
 /// Translates a natural-language query into a structured
 /// <see cref="ExtractedFilter"/> via an <see cref="IChatClient"/>. The model
-/// is instructed to reply with strict JSON; we deserialise and the caller
+/// is instructed to reply with strict JSON; we deserialize and the caller
 /// composes the resulting filter into the retrieval call.
 /// </summary>
 public sealed class QueryConstructor

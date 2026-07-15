@@ -115,7 +115,7 @@ public sealed class GraphTests
         graph.Add(new GraphEntity("alice", "Employee", "Alice",
             new Dictionary<string, string> { ["title"] = "Engineer" }));
         graph.Add(new GraphEntity("bob", "Employee", "Bob",
-            // The in-memory double surfaces neighbours via matching property
+            // The in-memory double surfaces neighbors via matching property
             // values; "directReport=Alice" stands in for the REPORTS_TO hop.
             new Dictionary<string, string> { ["title"] = "Manager", ["directReport"] = "Alice" }));
         await graph.UpsertRelationAsync(new GraphRelation("alice", "bob", "REPORTS_TO",

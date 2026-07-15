@@ -115,7 +115,7 @@ public sealed class CitationAuditor
         }
 
         // Prefer the canonical document record for the modified-at / source uri,
-        // falling back to the metadata denormalised onto the chunk.
+        // falling back to the metadata denormalized onto the chunk.
         var doc = await _documents.GetAsync(chunk.DocumentId, cancellationToken).ConfigureAwait(false)
             ?? chunk.Metadata;
         var sourceUri = SourceUriResolver.Resolve(doc);

@@ -86,7 +86,7 @@ builder.Services.AddSingleton<IVectorStore>(sp =>
 });
 // The retriever embeds the query through IEmbeddingService so it picks up the
 // model's query task prefix (the matching half of the document prefix used at
-// index time). EmbeddingPrompt.None keeps OpenAI/Azure behaviour unchanged; an
+// index time). EmbeddingPrompt.None keeps OpenAI/Azure behavior unchanged; an
 // Ollama deployment would pass EmbeddingPrompt.Nomic/Mxbai here.
 builder.Services.AddSingleton<IEmbeddingService>(sp =>
 {
@@ -175,7 +175,7 @@ app.MapPost("/api/ask", async (AskRequest req, IRagPipeline pipeline, IFeatureGa
     // 3.7 Real request-time feature-gate consumer: when graph retrieval is flagged
     // on at runtime, the answer is tagged so a caller can observe the active route.
     // The flag is read per request, so flipping it in configuration (Azure App
-    // Configuration in production) changes behaviour with no redeploy.
+    // Configuration in production) changes behavior with no redeploy.
     var graphEnabled = features.IsEnabled("graph-retrieval.enabled");
 
     RagResponse response;

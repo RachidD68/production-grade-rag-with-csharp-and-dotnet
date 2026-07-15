@@ -8,7 +8,7 @@ namespace SmartDocs.SecurityTests;
 
 /// <summary>
 /// The book's red-team taxonomy for the SmartDocs RAG stack: 25 adversarial
-/// cases across 8 categories, each asserting that the specific defence fired.
+/// cases across 8 categories, each asserting that the specific defense fired.
 /// The categories and their case counts:
 /// <list type="number">
 ///   <item>Direct prompt injection — 5 (InputSanitizer)</item>

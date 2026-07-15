@@ -8,7 +8,7 @@ namespace SmartDocs.Performance;
 
 /// <summary>
 /// Layer 1 of the caching stack (Ch 21): a full-response cache. Decorates an
-/// inner <see cref="IRagPipeline"/> and, keyed on the normalised question,
+/// inner <see cref="IRagPipeline"/> and, keyed on the normalized question,
 /// serves the entire <see cref="RagResponse"/> from an
 /// <see cref="IDistributedCache"/> on a repeat — skipping retrieval,
 /// augmentation, and generation altogether. An exact-query hit is the cheapest
@@ -34,13 +34,13 @@ public sealed class ResponseCache : IRagPipeline
 
     /// <summary>Create a response cache over <paramref name="inner"/> backed by <paramref name="cache"/>.</summary>
     /// <param name="inner">The pipeline to invoke on a cache miss.</param>
-    /// <param name="cache">The distributed cache holding serialised responses.</param>
+    /// <param name="cache">The distributed cache holding serialized responses.</param>
     /// <param name="ttl">Time-to-live for cached entries. Defaults to 10 minutes.</param>
     /// <param name="dependencies">
     /// Optional reverse-dependency index (Ch 22). When supplied, each stored entry
     /// registers the chunk ids it cited, so a later
     /// <see cref="CacheInvalidator.InvalidateForDocumentAsync"/> can evict it when a
-    /// source document changes. <see langword="null"/> keeps the Ch 21 behaviour.
+    /// source document changes. <see langword="null"/> keeps the Ch 21 behavior.
     /// </param>
     public ResponseCache(
         IRagPipeline inner,

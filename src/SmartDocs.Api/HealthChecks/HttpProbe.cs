@@ -64,7 +64,7 @@ internal static class HttpProbe
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // The probe's own timeout fired (not the host cancelling): the endpoint
+            // The probe's own timeout fired (not the host canceling): the endpoint
             // is configured but did not answer in time — unhealthy, not a throw.
             return HealthCheckResult.Unhealthy($"{dependencyName} timed out.");
         }

@@ -1,6 +1,6 @@
 // Chapter 25 — Vertical Slice Architecture variant.
 //
-// Same retrieval pipeline as SmartDocs.Api but organised by feature folder
+// Same retrieval pipeline as SmartDocs.Api but organized by feature folder
 // instead of by horizontal layer. Each "feature" (Ask, Health) owns its
 // own request, response, handler, and endpoint mapper. Suitable for
 // smaller projects (1-3 engineers) where the Clean / DDD layering of

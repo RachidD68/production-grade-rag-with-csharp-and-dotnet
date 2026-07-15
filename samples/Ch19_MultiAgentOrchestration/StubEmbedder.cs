@@ -5,7 +5,7 @@ namespace RagInDotNet.Samples.Ch19_MultiAgentOrchestration;
 
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
-/// Hashes each word into a fixed-width vector and unit-normalises, so the same
+/// Hashes each word into a fixed-width vector and unit-normalizes, so the same
 /// text always yields the same vector with no model or API key. This keeps the
 /// sample fully offline and reproducible run to run.
 ///
@@ -13,7 +13,7 @@ namespace RagInDotNet.Samples.Ch19_MultiAgentOrchestration;
 /// Copied — deliberately, not referenced — from the Chapter 8 sample so the
 /// orchestration sample stays self-contained. The critical detail is
 /// <see cref="StableHash"/>: a process-independent FNV-1a hash, never
-/// <c>string.GetHashCode</c> (which is randomised per process and would make
+/// <c>string.GetHashCode</c> (which is randomized per process and would make
 /// retrieval non-deterministic).
 /// </para>
 /// </summary>

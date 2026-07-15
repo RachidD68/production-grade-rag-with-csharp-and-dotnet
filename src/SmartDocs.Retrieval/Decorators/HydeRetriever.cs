@@ -6,7 +6,7 @@ namespace SmartDocs.Retrieval.Decorators;
 
 /// <summary>
 /// HyDE (Hypothetical Document Embeddings) — generate a hypothetical
-/// answer to the query first, then retrieve neighbours of that hypothetical
+/// answer to the query first, then retrieve neighbors of that hypothetical
 /// answer's text rather than the bare query. Helps when the query is short
 /// or ambiguous and the corpus contains long-form passages.
 /// </summary>

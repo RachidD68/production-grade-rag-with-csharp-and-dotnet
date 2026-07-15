@@ -6,8 +6,8 @@ namespace RagInDotNet.Samples.Ch16_VectorlessRetrieval;
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
 /// Hashes each word into a fixed-width vector with a process-independent FNV-1a
-/// hash (never <c>string.GetHashCode</c>, which is randomised per process) and
-/// unit-normalises, so the recall numbers this sample prints reproduce run to run
+/// hash (never <c>string.GetHashCode</c>, which is randomized per process) and
+/// unit-normalizes, so the recall numbers this sample prints reproduce run to run
 /// with no model or API key. Copied — deliberately, not referenced — from the
 /// Chapter 8 sample so the two harnesses stay independent.
 /// </summary>

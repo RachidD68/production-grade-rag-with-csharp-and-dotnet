@@ -22,7 +22,7 @@ namespace SmartDocs.IntegrationTests.Mcp;
 /// <para>
 /// The factory entry point is the HTTP sample's <c>Program</c> (exposed via
 /// <c>public partial class Program;</c>). Because both the sample and
-/// <c>SmartDocs.Api</c> synthesise a global <c>Program</c>, the sample is
+/// <c>SmartDocs.Api</c> synthesize a global <c>Program</c>, the sample is
 /// referenced through the <c>McpHttp</c> extern alias to disambiguate.
 /// </para>
 /// </summary>

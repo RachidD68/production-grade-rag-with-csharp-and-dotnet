@@ -45,17 +45,17 @@ public sealed partial class SmartDocsMemoryProviderTests
         var store = new InMemoryVectorStore("mem-isolation");
         await store.EnsureCollectionExistsAsync();
         var embeddings = BuildEmbeddingService();
-        var summariser = new ScriptedChatClient(_ => "The user's favourite project is codenamed Falcon.");
+        var summariser = new ScriptedChatClient(_ => "The user's favorite project is codenamed Falcon.");
 
         // User A remembers a fact.
-        await RememberAsync(store, embeddings, summariser, "user-A", "My favourite project is Falcon.");
+        await RememberAsync(store, embeddings, summariser, "user-A", "My favorite project is Falcon.");
 
         // User B asks an almost identical question — must NOT see user A's fact.
-        var recallB = await RecallAsync(store, embeddings, summariser, "user-B", "What is my favourite project?");
+        var recallB = await RecallAsync(store, embeddings, summariser, "user-B", "What is my favorite project?");
         Assert.DoesNotContain("Falcon", recallB, StringComparison.Ordinal);
 
         // Sanity: user A on a fresh session DOES see it, proving the fact was stored.
-        var recallA = await RecallAsync(store, embeddings, summariser, "user-A", "What is my favourite project?");
+        var recallA = await RecallAsync(store, embeddings, summariser, "user-A", "What is my favorite project?");
         Assert.Contains("Falcon", recallA, StringComparison.Ordinal);
     }
 

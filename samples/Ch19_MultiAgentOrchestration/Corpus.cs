@@ -102,8 +102,8 @@ internal static class Corpus
 
             ("financial-reports", "Finance", "Travel Expenses", new[]
             {
-                "Business travel is reimbursed when submitted with itemised receipts.",
-                "Daily meal allowances are capped at seventy-five dollars while travelling.",
+                "Business travel is reimbursed when submitted with itemized receipts.",
+                "Daily meal allowances are capped at seventy-five dollars while traveling.",
                 "Airfare must be booked in economy unless a flight exceeds six hours.",
                 "Expense reports are due within fifteen days of returning from a trip.",
             }),
@@ -118,7 +118,7 @@ internal static class Corpus
             {
                 "Department heads review budget variance at the close of every quarter.",
                 "Overruns above five percent require a written justification to Finance.",
-                "Reallocations between cost centres need CFO sign-off.",
+                "Reallocations between cost centers need CFO sign-off.",
                 "Quarterly forecasts feed the next year's planning cycle.",
             }),
             ("financial-reports", "Finance", "Payroll Schedule", new[]
@@ -130,8 +130,8 @@ internal static class Corpus
             }),
             ("financial-reports", "Finance", "Revenue Recognition", new[]
             {
-                "Subscription revenue is recognised rateably over the contract term.",
-                "Setup fees are deferred and amortised across the first twelve months.",
+                "Subscription revenue is recognized rateably over the contract term.",
+                "Setup fees are deferred and amortized across the first twelve months.",
                 "Refunds are netted against revenue in the period they are issued.",
                 "Multi-year contracts are split into annual recognition schedules.",
             }),
@@ -172,7 +172,7 @@ internal static class Corpus
                 "Legal holds suspend destruction for any records under litigation.",
             }),
 
-            ("product-catalog", "Product", "Roadmap Prioritisation", new[]
+            ("product-catalog", "Product", "Roadmap Prioritization", new[]
             {
                 "Roadmap items are scored on reach, impact, confidence, and effort.",
                 "The top quartile is committed for the quarter and the rest is backlog.",
@@ -240,7 +240,7 @@ internal static class Corpus
             {
                 "Purchases above five thousand dollars require three competitive quotes.",
                 "A signed purchase order must precede any committed spend.",
-                "Preferred suppliers are listed in the procurement catalogue.",
+                "Preferred suppliers are listed in the procurement catalog.",
                 "Sole-source purchases need a written justification and director approval.",
             }),
             ("financial-reports", "Finance", "Corporate Cards", new[]
@@ -261,7 +261,7 @@ internal static class Corpus
             {
                 "The software is warranted to perform materially as documented for ninety days.",
                 "The sole remedy for a breach of warranty is repair or replacement.",
-                "The warranty excludes defects caused by misuse or unauthorised modification.",
+                "The warranty excludes defects caused by misuse or unauthorized modification.",
                 "Warranty claims are submitted in writing to the support address.",
             }),
             ("product-catalog", "Product", "Onboarding Flow", new[]
@@ -271,11 +271,11 @@ internal static class Corpus
                 "Customers who finish onboarding in week one retain at a markedly higher rate.",
                 "Onboarding emails are paused as soon as the matching action is completed.",
             }),
-            ("product-catalog", "Product", "Integrations Catalogue", new[]
+            ("product-catalog", "Product", "Integrations Catalog", new[]
             {
-                "The integrations catalogue lists every supported third-party connector.",
+                "The integrations catalog lists every supported third-party connector.",
                 "Each connector documents its scopes, rate limits, and data flow.",
-                "Connectors are certified before they appear in the public catalogue.",
+                "Connectors are certified before they appear in the public catalog.",
                 "Customers can request a new connector through the feedback portal.",
             }),
             ("technical-docs", "Engineering", "Incident Severity", new[]

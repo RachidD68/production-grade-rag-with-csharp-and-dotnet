@@ -24,7 +24,7 @@ public interface IIndexingStrategy
     /// Project a chunk into one or more <see cref="IndexedItem"/>s. Each item carries
     /// the text that the embedding service will encode and the chunk that
     /// should be returned to the caller when that embedding is the
-    /// nearest-neighbour match.
+    /// nearest-neighbor match.
     /// </summary>
     IAsyncEnumerable<IndexedItem> IndexAsync(DocumentChunk chunk, CancellationToken cancellationToken = default);
 }

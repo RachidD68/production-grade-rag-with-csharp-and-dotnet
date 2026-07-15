@@ -76,7 +76,7 @@ public sealed class CohereReranker : IReranker
         [property: JsonPropertyName("top_n")] int TopN,
         // Cohere's per-document token budget (API default 4096). Left null by
         // default and omitted from the wire payload so the API applies its own
-        // default; only serialised when explicitly set.
+        // default; only serialized when explicitly set.
         [property: JsonPropertyName("max_tokens_per_doc")]
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         int? MaxTokensPerDoc = null);

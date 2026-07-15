@@ -72,7 +72,7 @@ public sealed class MultiAgentWorkflow
             tools: [_search]);
         _analyst = new ChatClientAgent(chat,
             name: "Analyst",
-            description: "Synthesises findings into a draft answer.",
+            description: "Synthesizes findings into a draft answer.",
             instructions: "Given the Researcher's bullet list, write a draft answer with [Source N] inline citations.",
             tools: []);
         _factChecker = new ChatClientAgent(chat,

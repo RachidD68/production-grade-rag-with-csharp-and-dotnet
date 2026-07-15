@@ -1,7 +1,7 @@
 // Ch 20 — Evaluating for safety, not just quality.
 //
 // Quality metrics (recall, faithfulness, relevance) say nothing about whether a
-// RAG system can be steered into harmful or non-compliant behaviour through its
+// RAG system can be steered into harmful or non-compliant behavior through its
 // single most-trusted, least-controlled input: retrieved context. This sample
 // has two parts.
 //
@@ -88,7 +88,7 @@ static async Task RunFoundrySafetyAsync(Uri endpoint)
     // service. ToChatConfiguration(IChatClient) wraps it with the safety service.
     var safetyConfiguration = serviceConfiguration.ToChatConfiguration(new HardenedChatClient());
 
-    var messages = new[] { new ChatMessage(ChatRole.User, "Summarise the vacation policy.") };
+    var messages = new[] { new ChatMessage(ChatRole.User, "Summarize the vacation policy.") };
     var response = new ChatResponse(new ChatMessage(ChatRole.Assistant,
         "Full-time employees accrue 20 paid vacation days per fiscal year."));
 

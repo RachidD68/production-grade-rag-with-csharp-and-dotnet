@@ -48,7 +48,7 @@ public sealed class InMemoryAuditRecordStore : IAuditRecordStore
 
 /// <summary>
 /// By-id lookup over document metadata. <see cref="DocumentChunk.Metadata"/>
-/// already denormalises the parent <see cref="DocumentMetadata"/> onto every
+/// already denormalizes the parent <see cref="DocumentMetadata"/> onto every
 /// chunk, so the auditor reads the source uri / modified-at straight off the
 /// chunk; this seam exists for the cases that need the canonical document record
 /// independent of any one chunk. Offline impl is a dictionary; production reads

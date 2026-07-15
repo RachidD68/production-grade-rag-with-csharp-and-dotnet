@@ -37,8 +37,8 @@ public static class Corpus
                 "Remote workers stay available during core hours and connect through the company VPN. " +
                 "A fully remote arrangement needs an exception approved by the department head."),
             ("expenses", "Finance", "Travel Expense Reimbursement",
-                "Expense reimbursement: business travel expenses are repaid when submitted with itemised receipts. " +
-                "Daily meal allowances are capped at seventy-five dollars while travelling on company business. " +
+                "Expense reimbursement: business travel expenses are repaid when submitted with itemized receipts. " +
+                "Daily meal allowances are capped at seventy-five dollars while traveling on company business. " +
                 "Airfare must be booked in economy class unless the flight exceeds six hours."),
             ("parental", "HR", "Parental Leave Policy",
                 "Parental leave: new parents receive sixteen weeks of fully paid leave after a birth or adoption. " +
@@ -126,7 +126,7 @@ public static class Corpus
         [
             // Each query is phrased to share surface vocabulary with a sibling
             // document, so the offline bag-of-words retriever often pulls a
-            // plausible-but-wrong neighbour to the top while still keeping the
+            // plausible-but-wrong neighbor to the top while still keeping the
             // right document inside the top-5. Recall@5 therefore stays high
             // across arms; the topical reranker's job is to push the right
             // document up to rank 1, which is what nDCG@5 and MRR reward.

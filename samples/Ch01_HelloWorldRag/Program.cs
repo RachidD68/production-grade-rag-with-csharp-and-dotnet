@@ -31,7 +31,7 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 
 // The Challenge exercise's no-result threshold: when the best match is too
 // weak, skip the LLM call and return a grounded "not enough information".
-// Absent or 0 preserves the original always-answer behaviour.
+// Absent or 0 preserves the original always-answer behavior.
 var minScore = double.TryParse(
     builder.Configuration["SmartDocs:Llm:NoResultThreshold"],
     System.Globalization.CultureInfo.InvariantCulture,

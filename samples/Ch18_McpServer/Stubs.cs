@@ -9,8 +9,8 @@ namespace RagInDotNet.Samples.Ch18_McpServer;
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
 /// Hashes each word into a fixed-width vector with a process-independent FNV-1a
-/// hash (never <c>string.GetHashCode</c>, which is randomised per process) and
-/// unit-normalises, so the server returns the same hits run to run with no model
+/// hash (never <c>string.GetHashCode</c>, which is randomized per process) and
+/// unit-normalizes, so the server returns the same hits run to run with no model
 /// or API key. Copied — deliberately, not referenced — from the Chapter 8 sample
 /// so the MCP server stays offline and self-contained.
 /// </summary>
@@ -133,8 +133,8 @@ internal sealed class StubGraphStore : IGraphStore
     {
         ArgumentNullException.ThrowIfNull(entityNames);
         var names = entityNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        // Return any seed entities that match, plus a couple of neighbours, so
-        // the retriever has a non-empty subgraph to summarise offline.
+        // Return any seed entities that match, plus a couple of neighbors, so
+        // the retriever has a non-empty subgraph to summarize offline.
         var matched = _entities
             .Where(e => names.Contains(e.Name) || names.Any(n => e.Name.Contains(n, StringComparison.OrdinalIgnoreCase)))
             .ToList();
@@ -172,7 +172,7 @@ internal sealed class OfflineChatClient : IChatClient
                     "{ \"entities\": [ { \"id\": \"policy\", \"type\": \"Document\", \"name\": \"policy\", \"properties\": {} } ], \"relations\": [] }")));
         }
 
-        // Summarisation prompt — return a short deterministic paragraph.
+        // Summarization prompt — return a short deterministic paragraph.
         const string Summary =
             "The relevant SmartDocs entities are connected through policy and ownership relationships " +
             "that determine how documents, departments, and offices relate within the corpus.";

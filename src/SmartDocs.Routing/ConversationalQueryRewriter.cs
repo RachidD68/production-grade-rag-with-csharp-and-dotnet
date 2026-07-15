@@ -32,7 +32,7 @@ public sealed class ConversationalQueryRewriter
     /// <param name="maxHistoryTurns">
     /// How many of the most recent history turns to include in the prompt
     /// (default 8). Older turns are dropped so the prompt stays bounded as a
-    /// conversation grows; summarising the dropped context instead of discarding
+    /// conversation grows; summarizing the dropped context instead of discarding
     /// it is a Chapter 12 exercise.
     /// </param>
     public ConversationalQueryRewriter(IChatClient chat, int maxHistoryTurns = 8)
@@ -58,7 +58,7 @@ public sealed class ConversationalQueryRewriter
         }
 
         // Bound the prompt: keep only the most recent N turns. Older context is
-        // dropped (rather than summarised — that is a Ch 12 exercise) so the
+        // dropped (rather than summarized — that is a Ch 12 exercise) so the
         // prompt size stays constant no matter how long the conversation runs.
         historyList = historyList.TakeLast(_maxHistoryTurns).ToList();
 

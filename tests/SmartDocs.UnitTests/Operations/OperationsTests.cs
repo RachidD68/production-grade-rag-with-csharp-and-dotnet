@@ -82,7 +82,7 @@ public sealed class OperationsTests
     public void DriftAdapter_trained_on_identical_pairs_is_near_identity()
     {
         // old == new ⇒ the optimal rotation is the identity, so Apply returns the
-        // (unit-normalised) input direction unchanged.
+        // (unit-normalized) input direction unchanged.
         var adapter = new DriftAdapter();
         float[][] basis = [[1f, 0f, 0f], [0f, 1f, 0f], [0f, 0f, 1f]];
         var vectors = basis.Select(v => new ReadOnlyMemory<float>(v)).ToArray();

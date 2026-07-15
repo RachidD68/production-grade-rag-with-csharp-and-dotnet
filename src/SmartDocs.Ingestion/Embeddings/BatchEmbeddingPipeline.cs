@@ -17,7 +17,7 @@ public sealed class BatchEmbeddingOptions
     public int BatchSize { get; set; } = 32;
 
     /// <summary>
-    /// How many provider calls to keep in flight at once. Honoured by
+    /// How many provider calls to keep in flight at once. Honored by
     /// <see cref="BatchEmbeddingPipeline"/> via a concurrency gate; output order
     /// is preserved regardless. Values below 1 are treated as 1. Default: 4.
     /// </summary>

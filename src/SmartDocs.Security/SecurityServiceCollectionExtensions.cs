@@ -6,7 +6,7 @@ using SmartDocs.Security.ContentSafety;
 namespace SmartDocs.Security;
 
 /// <summary>
-/// DI helpers for wiring the SmartDocs injection-detection defences.
+/// DI helpers for wiring the SmartDocs injection-detection defenses.
 /// </summary>
 public static class SecurityServiceCollectionExtensions
 {

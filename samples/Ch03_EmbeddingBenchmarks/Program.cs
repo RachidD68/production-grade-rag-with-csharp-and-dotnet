@@ -149,7 +149,7 @@ static string[] LoadPassages() =>
     "Whistleblower reports can be filed anonymously through the secure portal.",
     "Salary bands are reviewed annually against external benchmark surveys.",
     "Bereavement leave provides up to five paid days for immediate family.",
-    "The expense policy distinguishes per diem from itemised reimbursement.",
+    "The expense policy distinguishes per diem from itemized reimbursement.",
     "Employees opting for hybrid work must meet on-site at least twice per week.",
     "Equity refreshes follow the annual review cycle and depend on performance rating.",
     "Departmental travel budgets reset at the start of each fiscal year.",

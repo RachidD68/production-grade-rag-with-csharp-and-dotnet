@@ -140,7 +140,7 @@ public sealed class McpToolsTests
     {
         // LazyGraphRagRetriever needs an EntityExtractor + IGraphStore + IChatClient;
         // exercising it fully is the integration sample's job. Here we assert the
-        // tool's boundary behaviour with a stub graph retriever via the shared seam.
+        // tool's boundary behavior with a stub graph retriever via the shared seam.
         var graphHit = Hit(Chunk("graph", "subgraph summary"));
         var tool = new GraphSearchToolHarness([graphHit], FullAccess());
 

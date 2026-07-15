@@ -6,14 +6,14 @@ namespace RagInDotNet.Tools.EvalRunner;
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>:
 /// a process-independent FNV-1a hash buckets each word into a fixed-width vector,
-/// then unit-normalises. The same text always yields the same vector with no
+/// then unit-normalizes. The same text always yields the same vector with no
 /// model and no API key, so the metrics this runner prints — and the confidence
 /// intervals derived from them — reproduce exactly in CI.
 ///
 /// <para>
 /// Copied (not referenced) from the Chapter 8 retriever-eval sample so the eval
 /// runner stays self-contained and offline. The critical detail is the stable
-/// FNV-1a hash; never <c>string.GetHashCode</c>, which is randomised per process.
+/// FNV-1a hash; never <c>string.GetHashCode</c>, which is randomized per process.
 /// </para>
 /// </summary>
 internal sealed partial class BagOfWordsEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>>

@@ -10,7 +10,7 @@ namespace SmartDocs.Retrieval.Filtering;
 /// Best-effort translator from a <see cref="MetadataFilter"/> to an Azure AI
 /// Search OData <c>$filter</c> string over the filterable fields declared in
 /// <c>AzureAiSearchVectorStore.BuildIndex</c>. Returns <see langword="null"/>
-/// when the expression uses a node this translator does not cover, signalling
+/// when the expression uses a node this translator does not cover, signaling
 /// the adapter to fall back to in-process post-filtering.
 /// </summary>
 /// <remarks>

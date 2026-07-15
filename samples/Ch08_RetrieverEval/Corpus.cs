@@ -14,7 +14,7 @@ namespace RagInDotNet.Samples.Ch08_RetrieverEval;
 /// The gold set deliberately mixes two query styles so the comparison teaches
 /// the real lesson. Some queries are paraphrases that share little surface
 /// vocabulary with the document ("time off for a new baby" → the parental-leave
-/// doc), which favour the dense leg; others lean on a distinctive keyword
+/// doc), which favor the dense leg; others lean on a distinctive keyword
 /// ("VPN", "HNSW", "FreshBooks") that BM25's exact-match scoring rewards. Fused
 /// retrieval is expected to recover the union — at or above the better single
 /// leg on every query — which is why hybrid tops the table.
@@ -96,8 +96,8 @@ public static class Corpus
 
             // --- Finance ------------------------------------------------------
             ("fin-expenses", "financial-reports", "Finance", "Travel Expense Reimbursement",
-                "Business travel expenses are reimbursed when submitted with itemised receipts. " +
-                "Daily meal allowances are capped at seventy-five dollars while travelling. " +
+                "Business travel expenses are reimbursed when submitted with itemized receipts. " +
+                "Daily meal allowances are capped at seventy-five dollars while traveling. " +
                 "Airfare must be booked in economy class unless a flight exceeds six hours."),
             ("fin-invoicing", "financial-reports", "Finance", "Vendor Invoicing in FreshBooks",
                 "Vendor invoices are entered into FreshBooks within two business days of receipt. " +
@@ -106,7 +106,7 @@ public static class Corpus
             ("fin-budget", "financial-reports", "Finance", "Quarterly Budget Review",
                 "Department heads review their budget variance at the close of every quarter. " +
                 "Overruns above five percent require a written justification to Finance. " +
-                "Reallocations between cost centres need CFO sign-off."),
+                "Reallocations between cost centers need CFO sign-off."),
             ("fin-payroll", "financial-reports", "Finance", "Payroll Schedule",
                 "Salaries are paid on the last business day of each month by direct deposit. " +
                 "Timesheet corrections must be submitted three business days before the payroll run. " +
@@ -114,10 +114,10 @@ public static class Corpus
             ("fin-procurement", "financial-reports", "Finance", "Procurement Policy",
                 "Purchases above five thousand dollars require three competitive quotes. " +
                 "A signed purchase order must precede any committed spend. " +
-                "Preferred suppliers are listed in the procurement catalogue."),
+                "Preferred suppliers are listed in the procurement catalog."),
             ("fin-revenue", "financial-reports", "Finance", "Revenue Recognition",
-                "Subscription revenue is recognised rateably over the contract term. " +
-                "Setup fees are deferred and amortised across the first twelve months. " +
+                "Subscription revenue is recognized rateably over the contract term. " +
+                "Setup fees are deferred and amortized across the first twelve months. " +
                 "Refunds are netted against revenue in the period they are issued."),
 
             // --- Legal --------------------------------------------------------
@@ -143,7 +143,7 @@ public static class Corpus
                 "Expired records are destroyed through the certified shredding vendor."),
 
             // --- Product ------------------------------------------------------
-            ("prod-roadmap", "product-catalog", "Product", "Roadmap Prioritisation",
+            ("prod-roadmap", "product-catalog", "Product", "Roadmap Prioritization",
                 "Roadmap items are scored on reach, impact, confidence, and effort. " +
                 "The top quartile is committed for the quarter and the rest is backlog. " +
                 "Customer-commitment features can jump the queue with VP approval."),
@@ -227,11 +227,11 @@ public static class Corpus
             ("When must airfare be booked in economy?",                     "fin-expenses"),
             ("How quickly are vendor invoices entered in FreshBooks?",      "fin-invoicing"),
             ("Who approves a large vendor payment?",                        "fin-invoicing"),
-            ("Who signs off on moving money between cost centres?",         "fin-budget"),
+            ("Who signs off on moving money between cost centers?",         "fin-budget"),
             ("When are salaries paid each month?",                          "fin-payroll"),
             ("How many quotes are needed for a big purchase?",              "fin-procurement"),
-            ("How is subscription revenue recognised?",                     "fin-revenue"),
-            ("Are setup fees recognised immediately?",                      "fin-revenue"),
+            ("How is subscription revenue recognized?",                     "fin-revenue"),
+            ("Are setup fees recognized immediately?",                      "fin-revenue"),
             ("When are year-end tax documents issued?",                     "fin-payroll"),
 
             // Legal (10)
@@ -247,7 +247,7 @@ public static class Corpus
             ("How are expired records destroyed?",                          "legal-retention"),
 
             // Product (8)
-            ("How are roadmap items prioritised?",                          "prod-roadmap"),
+            ("How are roadmap items prioritized?",                          "prod-roadmap"),
             ("What is included in the Enterprise tier?",                    "prod-pricing"),
             ("How is usage over the plan limit billed?",                    "prod-pricing"),
             ("How do we stage a feature flag rollout?",                     "prod-flags"),

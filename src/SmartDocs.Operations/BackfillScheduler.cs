@@ -151,7 +151,7 @@ public sealed class BackfillScheduler
 
         progress ??= new BackfillProgress();
 
-        // Materialise the candidate set so Total is known up front and the
+        // Materialize the candidate set so Total is known up front and the
         // shadow-then-cutover mode can stage a full cohort before swapping.
         var candidates = new List<DocumentChunk>();
         await foreach (var embedded in source.WithCancellation(cancellationToken).ConfigureAwait(false))

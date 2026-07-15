@@ -11,7 +11,7 @@ namespace SmartDocs.Retrieval.Hybrid;
 /// Single-store hybrid retriever over a Qdrant collection that holds BOTH a
 /// dense (named) vector and a sparse (named) vector per point. It issues ONE
 /// <c>QueryAsync</c> built from two <see cref="PrefetchQuery"/> legs — a dense
-/// nearest-neighbour leg and a sparse leg — and lets Qdrant fuse them
+/// nearest-neighbor leg and a sparse leg — and lets Qdrant fuse them
 /// <em>server-side</em> with <see cref="Fusion.Rrf"/> (the Query API, Qdrant
 /// 1.10+). The collection's sparse vector should be configured with
 /// <see cref="Modifier.Idf"/> so Qdrant applies IDF weighting to the sparse
@@ -49,7 +49,7 @@ public sealed partial class QdrantHybridRetriever : IRetriever
     private readonly string _denseVectorName;
     private readonly string _sparseVectorName;
 
-    /// <param name="client">An initialised Qdrant gRPC client (default port 6334).</param>
+    /// <param name="client">An initialized Qdrant gRPC client (default port 6334).</param>
     /// <param name="embeddings">Embeds the query (query-task prefix applied), mirroring the dense retriever.</param>
     /// <param name="collectionName">The hybrid Qdrant collection (named dense + sparse vectors).</param>
     /// <param name="denseVectorName">The collection's named dense vector. Default <c>dense</c>.</param>
@@ -92,7 +92,7 @@ public sealed partial class QdrantHybridRetriever : IRetriever
 
         var candidateLimit = (ulong)(topK * CandidateMultiplier);
 
-        // Dense prefetch leg: nearest neighbours over the named dense vector.
+        // Dense prefetch leg: nearest neighbors over the named dense vector.
         var densePrefetch = new PrefetchQuery
         {
             Query = denseVec.ToArray(), // float[] -> VectorInput -> Query (dense nearest)

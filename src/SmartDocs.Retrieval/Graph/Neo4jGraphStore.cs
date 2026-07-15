@@ -137,7 +137,7 @@ public sealed class Neo4jGraphStore : IGraphStore, IAsyncDisposable
 
     public ValueTask DisposeAsync() => _driver.DisposeAsync();
 
-    /// <summary>Allow only [A-Za-z0-9_] in label / relation names — the rest of Cypher is parameterised.</summary>
+    /// <summary>Allow only [A-Za-z0-9_] in label / relation names — the rest of Cypher is parameterized.</summary>
     private static string Sanitize(string name)
     {
         var span = name.AsSpan();

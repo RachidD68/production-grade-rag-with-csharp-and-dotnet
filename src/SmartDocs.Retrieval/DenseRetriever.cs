@@ -6,7 +6,7 @@ namespace SmartDocs.Retrieval;
 /// <summary>
 /// Dense retriever — embeds the query with the same model used at index
 /// time and asks the underlying <see cref="IVectorStore"/> for the nearest
-/// neighbours. Routing through <see cref="IEmbeddingService.EmbedQueryAsync"/>
+/// neighbors. Routing through <see cref="IEmbeddingService.EmbedQueryAsync"/>
 /// (rather than a raw <c>IEmbeddingGenerator</c>) guarantees the query is
 /// embedded with the model's <em>query</em> task prefix — the matching half of
 /// the document prefix applied at index time.

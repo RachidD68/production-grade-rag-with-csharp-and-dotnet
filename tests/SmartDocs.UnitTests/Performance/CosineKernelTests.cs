@@ -52,7 +52,7 @@ public sealed class CosineKernelTests
     [Fact]
     public void Simd_path_agrees_with_scalar_reference_over_a_long_vector()
     {
-        // A vector longer than any SIMD width exercises the vectorised loop AND
+        // A vector longer than any SIMD width exercises the vectorized loop AND
         // its scalar tail; compare to an independent scalar reference.
         var rng = new Random(42);
         const int n = 1_000; // not a multiple of 8/16, so the tail runs too

@@ -69,7 +69,7 @@ public sealed record FaithfulnessSamplerOptions(double SampleRate = 0.005, doubl
 /// average falls below a configurable threshold (chapter default 0.82). The
 /// sampling decision, threshold, window, and clock are all injectable so the
 /// component is deterministic offline: pass a seeded RNG and a stub judge and the
-/// alert behaviour is fully reproducible. Samples are kept in memory here; a
+/// alert behavior is fully reproducible. Samples are kept in memory here; a
 /// production sink would persist them alongside the audit log.
 /// </summary>
 public sealed class ProductionFaithfulnessSampler

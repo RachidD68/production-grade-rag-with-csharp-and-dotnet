@@ -159,7 +159,7 @@ public sealed class RagPipelineTests
     /// <summary>
     /// <see cref="IChatClient"/> whose streaming response yields a fixed number of
     /// tokens and then faults. If a <see cref="CancellationTokenSource"/> is given,
-    /// it is cancelled instead of throwing, so the fault surfaces as an
+    /// it is canceled instead of throwing, so the fault surfaces as an
     /// <see cref="OperationCanceledException"/> via the pipeline's token check.
     /// </summary>
     private sealed class ThrowingChatClient : IChatClient

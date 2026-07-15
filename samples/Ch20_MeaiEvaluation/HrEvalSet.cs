@@ -1,6 +1,6 @@
 namespace RagInDotNet.Samples.Ch20_MeaiEvaluation;
 
-/// <summary>One labelled evaluation case for the SmartDocs HR corpus.</summary>
+/// <summary>One labeled evaluation case for the SmartDocs HR corpus.</summary>
 /// <param name="Question">The user's question.</param>
 /// <param name="Answer">The RAG pipeline's grounded answer (the system-under-test output).</param>
 /// <param name="RetrievedContext">The chunk texts the retriever surfaced for this question.</param>

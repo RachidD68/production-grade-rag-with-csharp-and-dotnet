@@ -106,8 +106,8 @@ internal static class Corpus
             ]),
             ("fin-expenses", "financial-reports", "Finance", "Montreal", "Internal", "Travel Expense Reimbursement",
             [
-                "Business travel expenses are reimbursed when submitted with itemised receipts.",
-                "Daily meal allowances are capped at seventy-five dollars while travelling.",
+                "Business travel expenses are reimbursed when submitted with itemized receipts.",
+                "Daily meal allowances are capped at seventy-five dollars while traveling.",
                 "Airfare must be booked in economy class unless a flight exceeds six hours.",
             ]),
             ("fin-invoicing", "financial-reports", "Finance", "Paris", "Internal", "Vendor Invoicing",
@@ -120,7 +120,7 @@ internal static class Corpus
             [
                 "Department budgets and variance are confidential and reviewed at the close of every quarter.",
                 "Overruns above five percent require a written justification to Finance.",
-                "Reallocations between cost centres need CFO sign-off.",
+                "Reallocations between cost centers need CFO sign-off.",
             ]),
             ("fin-payroll", "financial-reports", "Finance", "Casablanca", "Confidential", "Payroll Schedule",
             [
@@ -152,7 +152,7 @@ internal static class Corpus
                 "Prior inventions listed in the onboarding schedule remain the employee's property.",
                 "Open-source contributions require prior written approval.",
             ]),
-            ("prod-roadmap", "product-catalog", "Product", "Montreal", "Internal", "Roadmap Prioritisation",
+            ("prod-roadmap", "product-catalog", "Product", "Montreal", "Internal", "Roadmap Prioritization",
             [
                 "Roadmap items are scored on reach, impact, confidence, and effort.",
                 "The top quartile is committed for the quarter and the rest is backlog.",
@@ -201,7 +201,7 @@ internal static class Corpus
             }
         }
 
-        // Synthesise additional procedural chunks so the corpus lands around the
+        // Synthesize additional procedural chunks so the corpus lands around the
         // ~150–200-chunk target the chapter calls for, without inventing new
         // policies: each base document gets a few short "see also" / FAQ chunks.
         var baseCount = chunks.Count;

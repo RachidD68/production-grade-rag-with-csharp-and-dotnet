@@ -4,7 +4,7 @@ using SmartDocs.Evaluation;
 
 namespace RagInDotNet.Tools.EvalRunner;
 
-/// <summary>One labelled eval case: a query, the documents that answer it, and a reference answer.</summary>
+/// <summary>One labeled eval case: a query, the documents that answer it, and a reference answer.</summary>
 internal sealed record EvalCase(GoldenItem Gold, string ReferenceAnswer);
 
 /// <summary>
@@ -44,8 +44,8 @@ internal static class EvalCorpus
             "The code of conduct prohibits harassment, discrimination, and retaliation. " +
             "Violations may be reported anonymously through the ethics hotline."),
         ("hr-expenses", "Travel Expense Reimbursement",
-            "Business travel expenses are reimbursed when submitted with itemised receipts. " +
-            "Daily meal allowances are capped at seventy-five dollars while travelling."),
+            "Business travel expenses are reimbursed when submitted with itemized receipts. " +
+            "Daily meal allowances are capped at seventy-five dollars while traveling."),
         ("hr-payroll", "Payroll Schedule",
             "Salaries are paid on the last business day of each month by direct deposit. " +
             "Year-end tax documents are issued by the end of January."),
@@ -94,7 +94,7 @@ internal static class EvalCorpus
             ("Where do I report harassment anonymously?", "hr-conduct",
                 "Harassment can be reported anonymously through the ethics hotline."),
             ("What is the daily meal limit when I travel for work?", "hr-expenses",
-                "The daily meal allowance is capped at seventy-five dollars while travelling."),
+                "The daily meal allowance is capped at seventy-five dollars while traveling."),
             ("When are salaries paid each month?", "hr-payroll",
                 "Salaries are paid on the last business day of each month."),
             ("How do I connect to internal services securely?", "hr-security",

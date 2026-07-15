@@ -241,7 +241,7 @@ public sealed class QdrantFilterCompiler
 
     private static ConditionClause BuildRange(BinaryExpression bin, ParameterExpression param)
     {
-        // Normalise so the member is on the left and the constant on the right.
+        // Normalize so the member is on the left and the constant on the right.
         Expression memberSide = bin.Left, valueSide = bin.Right;
         var nodeType = bin.NodeType;
         if (!(memberSide is MemberExpression me && me.Expression == param))

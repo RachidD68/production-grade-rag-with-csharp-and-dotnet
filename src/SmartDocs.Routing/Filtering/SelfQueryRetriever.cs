@@ -23,7 +23,7 @@ namespace SmartDocs.Routing.Filtering;
 /// constraint and retries, looping until results appear or only the security
 /// filter remains. The drop order, least-important first, is:
 /// <list type="number">
-///   <item><c>FiscalYear</c> — most likely to over-constrain (a doc revised in a neighbouring year is still relevant).</item>
+///   <item><c>FiscalYear</c> — most likely to over-constrain (a doc revised in a neighboring year is still relevant).</item>
 ///   <item><c>DocumentType</c> — the same content often appears under a related type.</item>
 ///   <item><c>Office</c> — location is frequently incidental to the answer.</item>
 ///   <item><c>Silo</c> — a coarse content bucket; nearby silos may hold the answer.</item>

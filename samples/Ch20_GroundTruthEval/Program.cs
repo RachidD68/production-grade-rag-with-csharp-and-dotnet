@@ -18,7 +18,7 @@
 //
 // Everything is offline and deterministic: the agent is backed by a
 // CannedAnswersClient stub (no model, no key), and LocalEvaluator never calls a
-// model. The bare foreach further down is kept only as a labelled teaching aside
+// model. The bare foreach further down is kept only as a labeled teaching aside
 // that shows what LocalEvaluator does under the hood — it is NOT the recommended
 // path.
 //

@@ -13,7 +13,7 @@ namespace SmartDocs.Core.Documents;
 /// <param name="Text">The chunk's textual content.</param>
 /// <param name="StartCharOffset">Inclusive UTF-16 character offset into the parent <see cref="Document.Content"/>.</param>
 /// <param name="EndCharOffset">Exclusive UTF-16 character offset into the parent <see cref="Document.Content"/>.</param>
-/// <param name="Metadata">A copy of the parent document's metadata, denormalised onto the chunk for filtering.</param>
+/// <param name="Metadata">A copy of the parent document's metadata, denormalized onto the chunk for filtering.</param>
 public sealed record DocumentChunk(
     string ChunkId,
     string DocumentId,

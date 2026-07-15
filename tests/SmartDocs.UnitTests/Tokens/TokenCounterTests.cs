@@ -50,7 +50,7 @@ public sealed class TokenCounterTests
         {
             "Retrieval-Augmented Generation lets Large Language Models reach " +
             "out to fresh, domain-specific knowledge instead of relying on " +
-            "what they memorised during training.",
+            "what they memorized during training.",
             29
         },
     };

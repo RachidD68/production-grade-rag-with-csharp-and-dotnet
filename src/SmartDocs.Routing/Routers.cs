@@ -200,7 +200,7 @@ public sealed class SemanticRouter : IQueryRouter
         }.ToFrozenDictionary(StringComparer.Ordinal);
 
     /// <summary>Create the embedding router.</summary>
-    /// <param name="embeddings">The embedding service used to vectorise the query and exemplars.</param>
+    /// <param name="embeddings">The embedding service used to vectorize the query and exemplars.</param>
     /// <param name="similarityThreshold">
     /// Cosine-similarity floor (default 0.35). Silos whose best exemplar clears
     /// this floor are selected; if none clear it, the single top silo is returned.

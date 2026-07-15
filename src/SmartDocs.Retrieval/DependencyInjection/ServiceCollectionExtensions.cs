@@ -130,7 +130,7 @@ public static class ServiceCollectionExtensions
     /// </list>
     /// The <see cref="IEmbeddingService"/> used to embed the query is resolved
     /// from the container, so register one first. Backend matching is
-    /// case-insensitive; an unrecognised value throws
+    /// case-insensitive; an unrecognized value throws
     /// <see cref="InvalidOperationException"/>. Composable with the
     /// <c>AddSmartDocs…VectorStore</c> registrations — this adds the hybrid
     /// <see cref="IRetriever"/>, it does not replace any <see cref="IVectorStore"/>.
@@ -222,7 +222,7 @@ public static class ServiceCollectionExtensions
     ///   <item><description><c>crag</c> → <see cref="CragRetriever"/> (corrective grading + optional web fallback).</description></item>
     ///   <item><description><c>stepback</c> → <see cref="StepBackRetriever"/> (step-back abstraction + RRF).</description></item>
     /// </list>
-    /// Matching is case-insensitive; an unrecognised value throws
+    /// Matching is case-insensitive; an unrecognized value throws
     /// <see cref="InvalidOperationException"/>.
     /// </summary>
     /// <param name="services">The DI container being built.</param>

@@ -6,7 +6,7 @@ namespace SmartDocs.Reindex;
 /// <summary>
 /// Deterministic offline <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/> for
 /// the reindex sketch. A stable FNV-1a hash buckets each word into a fixed-width
-/// vector, then unit-normalises — the same text always yields the same vector with
+/// vector, then unit-normalizes — the same text always yields the same vector with
 /// no model and no API key, so the whole migration runs in CI. A per-instance
 /// <c>salt</c> lets the tool stand up two <em>different</em> embedding "models"
 /// (old vs new) whose vector spaces differ, which is exactly what a real

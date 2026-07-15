@@ -16,7 +16,7 @@ public static class CosineKernel
     /// <summary>
     /// Cosine similarity of two equal-length vectors, in <c>[-1, 1]</c>.
     /// Returns <c>0</c> when the lengths differ or either vector is the zero
-    /// vector (an undefined cosine), matching the behaviour of the inline
+    /// vector (an undefined cosine), matching the behavior of the inline
     /// implementations this kernel replaced.
     /// </summary>
     /// <param name="a">The first vector.</param>

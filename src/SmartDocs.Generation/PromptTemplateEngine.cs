@@ -6,7 +6,7 @@ namespace SmartDocs.Generation;
 
 /// <summary>
 /// Builds the LLM prompt by injecting retrieved context into a fixed
-/// template. Honours a <see cref="ContextBudgetTokens"/> limit by greedily
+/// template. Honors a <see cref="ContextBudgetTokens"/> limit by greedily
 /// adding chunks in retrieval-rank order until adding the next chunk
 /// would exceed the budget. Each chunk is injected with a numbered
 /// <c>[Source N]</c> marker so the citation pipeline (Ch 24) can map a

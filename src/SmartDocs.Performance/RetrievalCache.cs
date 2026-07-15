@@ -16,7 +16,7 @@ namespace SmartDocs.Performance;
 /// when their answers differ.
 /// <para>
 /// The canonical <see cref="IRetriever.RetrieveAsync"/> has no filter
-/// parameter, so the cache key is exactly the normalised query plus
+/// parameter, so the cache key is exactly the normalized query plus
 /// <c>topK</c> — there is no hidden filter dimension to leak.
 /// </para>
 /// </summary>
@@ -33,13 +33,13 @@ public sealed class RetrievalCache : IRetriever
 
     /// <summary>Create a retrieval cache over <paramref name="inner"/> backed by <paramref name="cache"/>.</summary>
     /// <param name="inner">The retriever to invoke on a cache miss.</param>
-    /// <param name="cache">The distributed cache holding serialised result lists.</param>
+    /// <param name="cache">The distributed cache holding serialized result lists.</param>
     /// <param name="ttl">Time-to-live for cached entries. Defaults to 5 minutes.</param>
     /// <param name="dependencies">
     /// Optional reverse-dependency index (Ch 22). When supplied, each stored result
     /// list registers the chunk ids it returned, so a later
     /// <see cref="CacheInvalidator.InvalidateForDocumentAsync"/> can evict it when a
-    /// source document changes. <see langword="null"/> keeps the Ch 21 behaviour.
+    /// source document changes. <see langword="null"/> keeps the Ch 21 behavior.
     /// </param>
     public RetrievalCache(
         IRetriever inner,

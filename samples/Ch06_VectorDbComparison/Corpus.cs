@@ -5,7 +5,7 @@ namespace RagInDotNet.Samples.Ch06_VectorDbComparison;
 /// <summary>
 /// Builds the synthetic SmartDocs corpus and gold query set for the
 /// comparison. Embeddings are generated deterministically (seeded RNG,
-/// topic-clustered, unit-normalised) so the sample runs offline with no
+/// topic-clustered, unit-normalized) so the sample runs offline with no
 /// embedding model and the gold set is reproducible run-to-run.
 /// </summary>
 public static class Corpus

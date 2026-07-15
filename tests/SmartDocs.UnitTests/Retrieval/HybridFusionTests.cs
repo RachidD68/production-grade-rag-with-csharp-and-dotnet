@@ -29,7 +29,7 @@ public sealed class HybridFusionTests
         var fused = fusion.Fuse(a, b, topK: 3);
 
         Assert.Equal(3, fused.Count);
-        // beta is normalised top in list b and bottom in list a -> mid-pack but present.
+        // beta is normalized top in list b and bottom in list a -> mid-pack but present.
         Assert.Contains(fused, r => r.Chunk.DocumentId == "beta");
     }
 

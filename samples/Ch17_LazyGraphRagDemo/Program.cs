@@ -3,10 +3,10 @@
 // Demonstrates LazyGraphRAG end-to-end against the real library types
 // (SmartDocs.Retrieval.Graph.LazyGraphRagRetriever + InMemorySummaryCache),
 // fully offline — no Neo4j, no API key. A deterministic stub IChatClient stands
-// in for the summarisation LLM and counts how many times it is actually called,
+// in for the summarization LLM and counts how many times it is actually called,
 // and a tiny in-memory IGraphStore returns the subgraph for "Acme".
 //
-// The point of the chapter: LazyGraphRAG defers summarisation to query time, and
+// The point of the chapter: LazyGraphRAG defers summarization to query time, and
 // an ISummaryCache makes that per-query cost bounded. We run the SAME query
 // twice; the second run resolves to the same subgraph, hits the cache, and skips
 // the LLM call entirely. The console prints cache Hits / Misses and the LLM call
@@ -34,9 +34,9 @@ graph.Add(new GraphEntity("paris-office", "Office", "Paris",
 Console.WriteLine($"Knowledge graph: {graph.Count} entities (in-memory, no Neo4j).");
 Console.WriteLine();
 
-// --- The summarisation LLM (stubbed, deterministic, call-counting). ---
+// --- The summarization LLM (stubbed, deterministic, call-counting). ---
 // In production this is a real IChatClient (Azure OpenAI, Ollama, ...). Here it
-// returns a fixed summary and counts every summarise call so we can SEE the
+// returns a fixed summary and counts every summarize call so we can SEE the
 // cache avoid the second one.
 var llm = new CountingChatClient(prompt =>
     prompt.Contains("Subgraph:", StringComparison.Ordinal)
@@ -71,7 +71,7 @@ Console.WriteLine($"  Two queries resolved to the same subgraph.");
 Console.WriteLine($"  The LLM summarised only {llm.SummariseCalls} time(s); query 2 was served from cache.");
 Console.WriteLine($"  cache Hits={cache.Hits}, Misses={cache.Misses}.");
 Console.WriteLine();
-Console.WriteLine("  Insight: LazyGraphRAG pays for summarisation per query, but caching");
+Console.WriteLine("  Insight: LazyGraphRAG pays for summarization per query, but caching");
 Console.WriteLine("  by subgraph means equivalent questions cost nothing extra — the");
 Console.WriteLine("  economics the chapter claims, made true and offline-testable.");
 return;
@@ -80,7 +80,7 @@ return;
 
 /// <summary>
 /// Deterministic, call-counting <see cref="IChatClient"/>. Replies via a
-/// caller-supplied function and counts summarise calls (prompts that carry
+/// caller-supplied function and counts summarize calls (prompts that carry
 /// "Subgraph:") so the demo can show the cache avoiding the LLM.
 /// </summary>
 internal sealed class CountingChatClient(Func<string, string> respond) : IChatClient

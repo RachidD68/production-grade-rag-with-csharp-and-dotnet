@@ -52,7 +52,7 @@ public sealed class PresidioRedactor : IOutputRedactor
             return answer;
         }
 
-        // 1) Analyze: recognise PII spans.
+        // 1) Analyze: recognize PII spans.
         var analyzeRequest = new AnalyzeRequest(answer, _language);
         using var analyzeResponse = await _http
             .PostAsJsonAsync(_analyzerUri, analyzeRequest, JsonOptions, cancellationToken)
@@ -69,7 +69,7 @@ public sealed class PresidioRedactor : IOutputRedactor
             return answer;
         }
 
-        // 2) Anonymize: replace each recognised span with a typed placeholder.
+        // 2) Anonymize: replace each recognized span with a typed placeholder.
         var anonymizeRequest = new AnonymizeRequest(answer, spans);
         using var anonymizeResponse = await _http
             .PostAsJsonAsync(_anonymizerUri, anonymizeRequest, JsonOptions, cancellationToken)

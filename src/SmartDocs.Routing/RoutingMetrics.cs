@@ -52,7 +52,7 @@ public sealed class RoutingMetrics : IDisposable
 /// <see cref="RoutingMetrics"/> on every <see cref="RouteAsync"/> call: one
 /// silo-counter increment per returned silo, the confidence histogram, and an
 /// escalation count when the inner strategy is LLM- or embedding-based. The
-/// routing behaviour is unchanged — the decision is passed straight through.
+/// routing behavior is unchanged — the decision is passed straight through.
 /// </summary>
 public sealed class InstrumentedRouter : IQueryRouter
 {

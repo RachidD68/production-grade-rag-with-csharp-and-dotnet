@@ -81,7 +81,7 @@ public sealed class GraphRagTests
         graph.Entities.Add(new GraphEntity("acme", "Client", "Acme",
             new Dictionary<string, string> { ["industry"] = "manufacturing" }));
 
-        // Counts only summarisation calls (the prompt that carries "Subgraph:").
+        // Counts only summarization calls (the prompt that carries "Subgraph:").
         var summariser = new CountingChatClient(p =>
             p.Contains("Subgraph:", StringComparison.Ordinal)
                 ? "Acme is a manufacturing client."
@@ -92,7 +92,7 @@ public sealed class GraphRagTests
         var first = await lazy.RetrieveAsync("Tell me about Acme", topK: 1);
         var second = await lazy.RetrieveAsync("What do we know about Acme?", topK: 1);
 
-        // The subgraph is identical both times, so the LLM summarises exactly once.
+        // The subgraph is identical both times, so the LLM summarizes exactly once.
         Assert.Equal(1, summariser.SummariseCalls);
         Assert.Equal(1, cache.Hits);
         Assert.Equal(1, cache.Misses);
@@ -125,7 +125,7 @@ public sealed class GraphRagTests
         // A member entity's facts changed — invalidate every summary built from it.
         await cache.EvictByEntityAsync("acme");
 
-        // Next query must miss and summarise again.
+        // Next query must miss and summarize again.
         _ = await lazy.RetrieveAsync("Tell me about Acme", topK: 1);
         Assert.Equal(2, summariser.SummariseCalls);
         Assert.Equal(2, cache.Misses);
@@ -159,7 +159,7 @@ public sealed class GraphRagTests
         var hits = await store.SearchAsync(queryVector, topK: 2);
 
         Assert.NotEmpty(hits);
-        // The HR-community summary is the top hit for an HR-flavoured query.
+        // The HR-community summary is the top hit for an HR-flavored query.
         Assert.Equal("community/community-1#0", hits[0].Chunk.ChunkId);
         Assert.Equal("GraphSummary", hits[0].Chunk.Metadata.DocumentType);
         Assert.Contains(hits, h => h.Chunk.ChunkId == "community/community-0#0");
@@ -207,7 +207,7 @@ public sealed class GraphRagTests
 
     /// <summary>
     /// <see cref="StubChatClient"/> variant that counts how many times it was
-    /// asked to summarise a subgraph (a prompt containing "Subgraph:").
+    /// asked to summarize a subgraph (a prompt containing "Subgraph:").
     /// </summary>
     private sealed class CountingChatClient : IChatClient
     {

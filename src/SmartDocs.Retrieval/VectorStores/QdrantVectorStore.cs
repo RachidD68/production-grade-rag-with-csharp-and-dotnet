@@ -26,7 +26,7 @@ public sealed class QdrantVectorStore : IVectorStore
     private readonly Distance _distance;
     private readonly bool _useScalarQuantization;
 
-    /// <param name="client">An initialised Qdrant gRPC client (default port 6334).</param>
+    /// <param name="client">An initialized Qdrant gRPC client (default port 6334).</param>
     /// <param name="collectionName">The Qdrant collection backing this store.</param>
     /// <param name="vectorSize">Embedding dimensionality. Must match the model used at index time.</param>
     /// <param name="distance">Similarity metric, fixed at collection-creation time.</param>

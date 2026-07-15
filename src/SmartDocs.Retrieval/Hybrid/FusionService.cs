@@ -7,7 +7,7 @@ public enum FusionStrategy
 {
     /// <summary>Reciprocal Rank Fusion — score-scale agnostic, the production default.</summary>
     Rrf,
-    /// <summary>Linear weighted blend of normalised scores. Use when the score scales are calibrated.</summary>
+    /// <summary>Linear weighted blend of normalized scores. Use when the score scales are calibrated.</summary>
     Weighted,
     /// <summary>Try the first list; only fall through to the second if the first is below <c>FloorCount</c>.</summary>
     Cascade,

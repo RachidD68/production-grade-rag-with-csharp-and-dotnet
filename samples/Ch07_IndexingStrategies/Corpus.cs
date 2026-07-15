@@ -4,7 +4,7 @@ using SmartDocs.Evaluation;
 namespace RagInDotNet.Samples.Ch07_IndexingStrategies;
 
 /// <summary>
-/// A small, deterministic HR/policy corpus plus a hand-labelled gold query
+/// A small, deterministic HR/policy corpus plus a hand-labeled gold query
 /// set. Each document is a single chunk (the chapter's strategies project a
 /// chunk into one or more embedding inputs, so one chunk per document keeps the
 /// fan-out visible). The gold set maps a natural-language query to the
@@ -64,8 +64,8 @@ public static class Corpus
 
             ("hr-expenses",
                 "Travel Expense Reimbursement",
-                "Business travel expenses are reimbursed when submitted with itemised receipts. " +
-                "Daily meal allowances are capped at seventy-five dollars while travelling. " +
+                "Business travel expenses are reimbursed when submitted with itemized receipts. " +
+                "Daily meal allowances are capped at seventy-five dollars while traveling. " +
                 "Airfare must be booked in economy class unless a flight exceeds six hours."),
 
             ("hr-training",

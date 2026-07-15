@@ -28,7 +28,7 @@ public sealed class RerankingMiddleware : IRetriever
     /// <summary>
     /// Minimum reranked relevance score a result must reach to survive. A value
     /// of <c>0.0</c> (the default) disables the floor and preserves the prior
-    /// behaviour. When greater than zero, results scoring below it are dropped,
+    /// behavior. When greater than zero, results scoring below it are dropped,
     /// which may yield fewer than <c>topK</c> results or an empty list.
     /// </summary>
     public double MinScore { get; }

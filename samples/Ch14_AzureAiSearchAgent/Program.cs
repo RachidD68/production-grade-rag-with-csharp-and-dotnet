@@ -64,7 +64,7 @@ return 0;
 
 static IChatClient BuildStubChatClient()
 {
-    // Echo client — synthesises a plausible answer with a [Source 1] citation
+    // Echo client — synthesizes a plausible answer with a [Source 1] citation
     // so the orchestration shape is exercisable without a network call.
     return new EchoChatClient();
 }

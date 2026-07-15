@@ -6,7 +6,7 @@ namespace SmartDocs.Security.Retrieval;
 
 /// <summary>
 /// Authoritative chunk-id → tenant map. The vector store's metadata filter is
-/// the first line of defence against cross-tenant leakage; this index is the
+/// the first line of defense against cross-tenant leakage; this index is the
 /// independent second check used by <see cref="TenantGuard"/>, so a single
 /// mis-built filter cannot leak another tenant's data.
 /// </summary>

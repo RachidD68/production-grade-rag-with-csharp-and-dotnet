@@ -8,7 +8,7 @@ namespace SmartDocs.Retrieval.Graph;
 /// At index time:
 ///   1. extract entities + relations per chunk (EntityExtractor)
 ///   2. detect communities (Phase-5 stub: connected components only)
-///   3. summarise each community via IChatClient
+///   3. summarize each community via IChatClient
 ///
 /// At query time the consumer searches over the community summaries
 /// (typically as additional documents in a vector store).
@@ -109,7 +109,7 @@ public sealed class GraphRagPipeline
             communities.Add(component);
         }
 
-        // 3. Summarise each community.
+        // 3. Summarize each community.
         var summaries = new List<CommunitySummary>();
         for (int i = 0; i < communities.Count; i++)
         {
@@ -123,7 +123,7 @@ public sealed class GraphRagPipeline
             var memberLine = string.Join(", ",
                 members.Select(m => $"{m.Type}: {m.Name}"));
             var prompt =
-                "Summarise this community of related entities in two or three sentences.\n\n" +
+                "Summarize this community of related entities in two or three sentences.\n\n" +
                 "Members: " + memberLine;
             var response = await _chat.GetResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
             summaries.Add(new CommunitySummary(

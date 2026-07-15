@@ -21,7 +21,7 @@ public readonly record struct MmrCandidate(
 
 /// <summary>
 /// Maximal Marginal Relevance (Carbonell &amp; Goldstein, 1998) diversity
-/// selection. Greedily picks the candidate that maximises
+/// selection. Greedily picks the candidate that maximizes
 /// <c>λ·rel(d) − (1−λ)·max_{s∈selected} cosine(d, s)</c>, trading raw relevance
 /// (λ→1) against novelty versus already-selected results (λ→0). The classic fix
 /// for a top-K full of near-duplicate chunks of the same passage.

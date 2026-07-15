@@ -70,7 +70,7 @@ internal static class HelloWorldRag
             .ToList();
 
         // 3b. Abstain when nothing clears the relevance floor. The default
-        // minScore of 0 preserves the original always-answer behaviour; set
+        // minScore of 0 preserves the original always-answer behavior; set
         // SmartDocs:Llm:NoResultThreshold in appsettings.json (the Chapter 1
         // Challenge exercise) to turn it on. A too-weak top match means the
         // corpus probably can't answer, so skip the LLM call rather than

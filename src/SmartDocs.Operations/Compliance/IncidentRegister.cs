@@ -81,7 +81,7 @@ public sealed class IncidentRegister
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>Record a fully-analysed incident.</summary>
+    /// <summary>Record a fully-analyzed incident.</summary>
     public async Task RecordAsync(Incident incident, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(incident);

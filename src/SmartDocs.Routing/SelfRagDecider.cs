@@ -18,7 +18,7 @@ public sealed record RetrievalDecision(
     [property: JsonPropertyName("reasoning")] string Reasoning);
 
 /// <summary>
-/// Self-RAG's "retrieve-on-demand" gate (Asai et al., 2023), realised with
+/// Self-RAG's "retrieve-on-demand" gate (Asai et al., 2023), realized with
 /// Microsoft.Extensions.AI structured output. The original paper trains a model
 /// to emit a <c>[Retrieve]</c> reflection token; here we ask any
 /// <see cref="IChatClient"/> for a typed <see cref="RetrievalDecision"/> instead.
@@ -42,7 +42,7 @@ public sealed class SelfRagDecider
           { "shouldRetrieve": true | false, "reasoning": "one short sentence" }
 
         Set "shouldRetrieve" to true when the question asks about specific,
-        organisation-internal, recent, or factual-lookup content that a general
+        organization-internal, recent, or factual-lookup content that a general
         model would not reliably know. Set it to false for general knowledge,
         arithmetic, definitions, or chit-chat.
 

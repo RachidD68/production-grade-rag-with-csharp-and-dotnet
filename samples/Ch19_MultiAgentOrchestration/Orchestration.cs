@@ -43,7 +43,7 @@ public static class Orchestration
 
         var analyst = new ChatClientAgent(chat,
             name: "analyst",
-            description: "Synthesises findings into a draft answer.",
+            description: "Synthesizes findings into a draft answer.",
             instructions:
                 "ROLE:analyst Given the Researcher's quotes, write a draft answer with " +
                 "[Source N] inline citations.");

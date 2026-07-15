@@ -248,7 +248,7 @@ LIMIT @topk;");
     /// <summary>
     /// Quotes a SQL identifier by wrapping it in double quotes and doubling any
     /// embedded double quotes. Identifiers originate from configuration, not from
-    /// user input; this is defence-in-depth, not a user-input boundary.
+    /// user input; this is defense-in-depth, not a user-input boundary.
     /// </summary>
     private static string Quote(string identifier)
     {

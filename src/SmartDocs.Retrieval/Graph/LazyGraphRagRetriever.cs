@@ -5,17 +5,17 @@ using SmartDocs.Core.Documents;
 namespace SmartDocs.Retrieval.Graph;
 
 /// <summary>
-/// LazyGraphRAG (Microsoft Research, November 2024) — defers all summarisation
+/// LazyGraphRAG (Microsoft Research, November 2024) — defers all summarization
 /// to query time. At index time we only build the bare graph (entities +
 /// relations + chunk-text mapping). At query time we:
 ///   1. extract query entities
 ///   2. traverse the graph to gather a candidate subgraph
-///   3. ask the chat model to summarise just that subgraph
+///   3. ask the chat model to summarize just that subgraph
 ///
 /// Result: ~0.1% of full-GraphRAG indexing cost; query cost rises a bit
-/// because summarisation is now per-query. Supplying an
+/// because summarization is now per-query. Supplying an
 /// <see cref="ISummaryCache"/> makes that per-query cost real but bounded:
-/// queries that resolve to a subgraph already summarised reuse the cached
+/// queries that resolve to a subgraph already summarized reuse the cached
 /// summary and skip the LLM call entirely.
 /// </summary>
 public sealed class LazyGraphRagRetriever : IRetriever
@@ -29,12 +29,12 @@ public sealed class LazyGraphRagRetriever : IRetriever
     /// <summary>Create the retriever.</summary>
     /// <param name="extractor">Extracts the query's seed entities.</param>
     /// <param name="graph">The graph store traversed to assemble the subgraph.</param>
-    /// <param name="chat">The chat client used to summarise the subgraph at query time.</param>
+    /// <param name="chat">The chat client used to summarize the subgraph at query time.</param>
     /// <param name="maxHops">Traversal radius from the seed entities (default 2).</param>
     /// <param name="cache">
     /// Optional per-subgraph summary cache. When supplied, an identical subgraph
     /// served a second time reuses the cached summary and skips the LLM call;
-    /// when <see langword="null"/>, every query is summarised afresh.
+    /// when <see langword="null"/>, every query is summarized afresh.
     /// </param>
     public LazyGraphRagRetriever(
         EntityExtractor extractor,
@@ -82,7 +82,7 @@ public sealed class LazyGraphRagRetriever : IRetriever
 
         // The cache key is the set of subgraph entity ids — two different
         // natural-language queries that traverse to the same entities share one
-        // summary. On a hit we skip the (expensive) summarisation LLM call.
+        // summary. On a hit we skip the (expensive) summarization LLM call.
         var subgraphIds = subgraph.Select(e => e.Id).ToList();
         if (_cache is not null)
         {
@@ -93,7 +93,7 @@ public sealed class LazyGraphRagRetriever : IRetriever
             }
         }
 
-        // Per-query summarisation (the "Lazy" part — no precomputed summaries).
+        // Per-query summarization (the "Lazy" part — no precomputed summaries).
         var subgraphText = string.Join("\n",
             subgraph.Select(e => $"- {e.Type}: {e.Name}" +
                 (e.Properties.Count == 0 ? "" : " (" + string.Join("; ", e.Properties.Select(p => $"{p.Key}={p.Value}")) + ")")));

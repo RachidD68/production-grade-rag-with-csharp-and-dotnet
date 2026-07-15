@@ -14,7 +14,7 @@ public interface IChangeFeed
     /// <summary>
     /// Subscribe to the stream of <see cref="DocumentChanged"/> events. The
     /// sequence completes when the feed is closed or <paramref name="cancellationToken"/>
-    /// is cancelled.
+    /// is canceled.
     /// </summary>
     IAsyncEnumerable<DocumentChanged> SubscribeAsync(CancellationToken cancellationToken = default);
 

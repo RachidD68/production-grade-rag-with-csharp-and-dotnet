@@ -6,7 +6,7 @@ namespace RagInDotNet.Samples.Ch07_IndexingStrategies;
 /// <summary>
 /// Deterministic, offline <see cref="IChatClient"/> for the harness. It never
 /// reaches a model: it parses the passage out of the prompt the real
-/// strategies send and synthesises a plausible, keyword-bearing response so
+/// strategies send and synthesizes a plausible, keyword-bearing response so
 /// recall stays meaningful run-to-run. Every call increments
 /// <see cref="CallCount"/> so the comparison table can report index-time LLM
 /// calls per strategy.
@@ -150,7 +150,7 @@ internal sealed partial class CountingStubChatClient : IChatClient
 
 /// <summary>
 /// Deterministic bag-of-words <see cref="IEmbeddingGenerator{TInput,TEmbedding}"/>.
-/// Hashes each word into a fixed-width vector and unit-normalises, so the same
+/// Hashes each word into a fixed-width vector and unit-normalizes, so the same
 /// text always yields the same vector with no model or API key. This is the
 /// offline default; pass a real generator (e.g. Ollama) to compare against a
 /// production embedder.
@@ -190,7 +190,7 @@ internal sealed partial class BagOfWordsEmbeddingGenerator : IEmbeddingGenerator
         var vec = new float[Dimensions];
         foreach (Match m in WordRegex().Matches(text.ToLowerInvariant()))
         {
-            // Stable FNV-1a hash, NOT string.GetHashCode (which is randomised
+            // Stable FNV-1a hash, NOT string.GetHashCode (which is randomized
             // per process), so the recall numbers this sample prints are
             // reproducible run to run.
             vec[(int)(StableHash(m.Value) % Dimensions)] += 1f;

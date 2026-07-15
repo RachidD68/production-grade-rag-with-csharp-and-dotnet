@@ -116,7 +116,7 @@ public sealed class CodeFileChunker : IChunker
             return body;
         }
 
-        // A blank line separates the synthesised context header from the original
+        // A blank line separates the synthesized context header from the original
         // source body, matching the ContextualChunker augmentation convention.
         return $"{header.ToString().TrimEnd('\n')}\n\n{body}";
     }

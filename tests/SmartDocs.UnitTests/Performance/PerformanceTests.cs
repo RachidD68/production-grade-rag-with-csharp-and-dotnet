@@ -54,7 +54,7 @@ public sealed class PerformanceTests
             Strategy: "stub");
 
         cache.Set("Hello?", resp);
-        var hit = cache.TryGet("hello?", out var got); // case- and whitespace-normalised
+        var hit = cache.TryGet("hello?", out var got); // case- and whitespace-normalized
 
         Assert.True(hit);
         Assert.Same(resp, got);

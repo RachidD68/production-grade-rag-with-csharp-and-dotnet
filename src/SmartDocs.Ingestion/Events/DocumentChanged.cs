@@ -1,7 +1,7 @@
 namespace SmartDocs.Ingestion.Events;
 
 /// <summary>
-/// A change-feed event signalling that a document was created, edited, or deleted
+/// A change-feed event signaling that a document was created, edited, or deleted
 /// and must be re-ingested (Ch 22). Carries the tenant for tenant-scoped handling
 /// and a monotonically increasing <see cref="Version"/> for ordering: a consumer
 /// drops any event whose version is at or below the last one it processed for the

@@ -2,7 +2,7 @@ using SmartDocs.Core.Documents;
 
 namespace SmartDocs.Evaluation;
 
-/// <summary>One labelled QA pair from the golden eval set.</summary>
+/// <summary>One labeled QA pair from the golden eval set.</summary>
 public sealed record GoldenItem(
     string Query,
     IReadOnlySet<string> ExpectedDocumentIds,

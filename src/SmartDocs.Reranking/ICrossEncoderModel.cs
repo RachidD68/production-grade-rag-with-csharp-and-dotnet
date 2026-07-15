@@ -5,7 +5,7 @@ namespace SmartDocs.Reranking;
 /// candidate document texts, returns one relevance score in <c>[0, 1]</c> per
 /// document, aligned to the input order.
 /// <para>
-/// Implementations own the heavy lifting: tokenising each (query, document)
+/// Implementations own the heavy lifting: tokenizing each (query, document)
 /// pair, batching the pairs through the underlying model, and mapping the raw
 /// per-pair logit to a probability with a sigmoid so every returned score lands
 /// in <c>[0, 1]</c>. The returned list MUST have the same length as the input

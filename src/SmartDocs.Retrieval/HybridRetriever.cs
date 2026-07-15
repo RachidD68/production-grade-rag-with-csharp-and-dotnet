@@ -7,7 +7,7 @@ namespace SmartDocs.Retrieval;
 /// Hybrid retriever — fans out to a dense and a sparse retriever in
 /// parallel, then fuses the two ranked lists with <see cref="RrfMerger"/>.
 /// Composition over inheritance: any pair of <see cref="IRetriever"/>s
-/// can be hybridised this way.
+/// can be hybridized this way.
 /// </summary>
 public sealed class HybridRetriever : IRetriever
 {

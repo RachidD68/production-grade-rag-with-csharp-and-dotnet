@@ -15,7 +15,7 @@ namespace SmartDocs.Core.Conversations;
 /// process's memory is not shared across instances and is lost on restart.
 /// Production swaps in the Redis-backed
 /// <c>DistributedConversationStateStore</c> (SmartDocs.Performance) without any
-/// caller change. Both honour the same TTL-as-retention-boundary contract.
+/// caller change. Both honor the same TTL-as-retention-boundary contract.
 /// </para>
 /// </summary>
 public sealed class InMemoryConversationStateStore : IConversationStateStore

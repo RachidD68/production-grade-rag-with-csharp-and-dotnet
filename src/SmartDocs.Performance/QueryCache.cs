@@ -4,7 +4,7 @@ using SmartDocs.Generation;
 namespace SmartDocs.Performance;
 
 /// <summary>
-/// Caches full <see cref="RagResponse"/> objects keyed by the normalised
+/// Caches full <see cref="RagResponse"/> objects keyed by the normalized
 /// query text. Configurable TTL — defaults to 10 minutes. Use sparingly:
 /// the answer-cache hit hides any retrieval-side change (a cache flush is
 /// part of every reindex).
