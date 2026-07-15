@@ -205,11 +205,9 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="coverlet.collector" Version="10.0.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
-    <PackageVersion Include="Testcontainers" Version="4.11.0" />
-    <PackageVersion Include="Testcontainers.Qdrant" Version="4.11.0" />
-    <PackageVersion Include="Testcontainers.Neo4j" Version="4.11.0" />
-    <PackageVersion Include="Testcontainers.Redis" Version="4.11.0" />
-    <PackageVersion Include="Testcontainers.Ollama" Version="4.11.0" />
+    <!-- Integration tests hit locally-installed services on their default
+         ports behind RUN_*_INTEGRATION env gates (see docs/local-setup.md);
+         no Docker/Testcontainers dependency. -->
   </ItemGroup>
 
   <ItemGroup Label="Numerics (Ch 22 DriftAdapter — Orthogonal Procrustes via SVD)">

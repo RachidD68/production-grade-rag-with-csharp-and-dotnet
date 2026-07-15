@@ -9,25 +9,21 @@ namespace SmartDocs.IntegrationTests.Ollama;
 /// Real Ollama-backed integration tests for the Phase 1 LLM wiring. These
 /// tests are gated behind the <c>RUN_OLLAMA_INTEGRATION</c> environment
 /// variable so they don't fail in CI environments without an Ollama daemon.
-/// To run them locally:
+/// Install Ollama natively and pull the models (see docs/local-setup.md), then:
 ///
 /// <code>
-///   docker compose -f infra/docker-compose.yml up -d
-///   # wait for the ollama-init sidecar to pull nomic-embed-text + llama3.2
+///   ollama pull nomic-embed-text
+///   ollama pull llama3.2
 ///   $env:RUN_OLLAMA_INTEGRATION="1"  # PowerShell
 ///   # export RUN_OLLAMA_INTEGRATION=1  # bash
 ///   dotnet test --filter "FullyQualifiedName~Ollama"
 /// </code>
-///
-/// Phase 6 (Ch 21 / OpenTelemetry + observability) will replace this gate
-/// with a proper Testcontainers.Ollama fixture so CI can run these tests
-/// every PR.
 /// </summary>
 [Trait("Category", "RealOllama")]
 public sealed class OllamaProviderTests
 {
     private const string GateVar = "RUN_OLLAMA_INTEGRATION";
-    private const string GateMessage = "Set RUN_OLLAMA_INTEGRATION=1 and start docker compose to run.";
+    private const string GateMessage = "Set RUN_OLLAMA_INTEGRATION=1 and start a local Ollama to run.";
 
     [Fact]
     public async Task Ollama_provider_can_actually_embed_text()

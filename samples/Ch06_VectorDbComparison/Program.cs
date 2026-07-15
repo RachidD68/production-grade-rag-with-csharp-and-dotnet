@@ -10,8 +10,7 @@
 // Run (InMemory only — no Docker needed):
 //   dotnet run --project samples/Ch06_VectorDbComparison
 //
-// Run with Qdrant:
-//   docker compose -f infra/docker-compose.yml up -d
+// Run with Qdrant (native qdrant.exe on localhost:6334 — see docs/local-setup.md):
 //   RUN_QDRANT_INTEGRATION=1 dotnet run --project samples/Ch06_VectorDbComparison
 //
 // Run with Azure AI Search (set all three):
@@ -76,7 +75,7 @@ if (Environment.GetEnvironmentVariable("RUN_QDRANT_INTEGRATION") == "1")
 }
 else
 {
-    Console.WriteLine("[Qdrant] Skipped — set RUN_QDRANT_INTEGRATION=1 and start docker compose to include it.");
+    Console.WriteLine("[Qdrant] Skipped — set RUN_QDRANT_INTEGRATION=1 and start a local Qdrant to include it.");
 }
 
 // --- Azure AI Search: gated by endpoint + key + index env vars. ---

@@ -14,7 +14,7 @@ A single evolving project — **Contoso SmartDocs** — built across 25 chapters
 
 - A 14-project **Clean / DDD-ish** solution (Core, Ingestion, Retrieval, Reranking, Routing, Generation, Agents, Mcp, Security, Evaluation, Operations, Performance, Api, Dashboard) plus a Vertical Slice variant in Ch 25.
 - **Six document silos** (HR Policies, Technical Docs, Financial Reports, Legal Contracts, Product Catalog, Release Notes & Support Tickets) with full Ch 11 metadata schema baked in from day 1.
-- **Local infra** via Docker Compose: Qdrant + Neo4j + Redis + Ollama (`nomic-embed-text` + `llama3.2` pre-pulled) + Aspire Dashboard.
+- **Native local dev** (no Docker): Ollama (`nomic-embed-text` + `llama3.2`) for the default LLM + embeddings; the app and tests default to an in-memory vector store and cache. Optional persistent stores — PostgreSQL + pgvector, Qdrant, Neo4j, Redis — install natively per chapter. See [`docs/local-setup.md`](docs/local-setup.md).
 - **Quality gates**: `dotnet build` warnings-as-errors, `dotnet format --verify-no-changes`, xUnit tests, GitHub Actions CI on every PR.
 
 ---
@@ -52,7 +52,7 @@ The truth-source for all NuGet pins is [`Directory.Packages.props`](Directory.Pa
 ```bash
 # 1. Prerequisites
 #    - .NET 10 SDK         https://dot.net
-#    - Docker Desktop      https://docker.com
+#    - Ollama              https://ollama.com   (local LLM + embeddings)
 #    - Git                 https://git-scm.com
 
 # 2. Clone & build
@@ -61,9 +61,9 @@ cd RAG-in-DotNet
 dotnet restore
 dotnet build
 
-# 3. Spin up local infra (Qdrant, Neo4j, Redis, Ollama, Aspire)
-cp infra/.env.example infra/.env
-cd infra && docker compose up -d && cd ..
+# 3. Start Ollama and pull the default models (no Docker — see docs/local-setup.md)
+ollama pull nomic-embed-text
+ollama pull llama3.2
 
 # 4. Generate the 300-document Contoso dataset
 dotnet run --project tools/generate-dataset -- --small --output data
@@ -101,7 +101,7 @@ RAG-in-DotNet/
 │
 ├── tests/
 │   ├── SmartDocs.UnitTests       xUnit
-│   ├── SmartDocs.IntegrationTests Testcontainers-based (Phase 2+)
+│   ├── SmartDocs.IntegrationTests env-gated; hit natively-installed localhost services
 │   ├── SmartDocs.EvalTests       quality gates with thresholds
 │   └── SmartDocs.SecurityTests   25 OWASP AISVS C08 red-team cases (Ch 23)
 │
@@ -112,7 +112,6 @@ RAG-in-DotNet/
 │   ├── eval-runner               (Phase 6) — JUnit XML emitter for CI gates
 │   └── deepeval-bridge           (Phase 6) — Python microservice / subprocess wrapper
 ├── infra/
-│   ├── docker-compose.yml        Qdrant + Neo4j + Redis + Ollama + Aspire
 │   └── azure/                    (Phase 7) — Bicep templates
 ├── .github/workflows/
 │   ├── ci.yml                    build + test on PRs

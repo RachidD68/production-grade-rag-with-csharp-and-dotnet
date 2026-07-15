@@ -16,13 +16,13 @@ Reasons to default to **Azure OpenAI**:
 
 Reasons to default to **Ollama**:
 - Works offline. No API key. No subscription. No spend.
-- Matches the local-only `infra/docker-compose.yml` stack — Ollama is included, Azure isn't.
+- Runs fully locally via a native Ollama install (see [`../local-setup.md`](../local-setup.md)) — no Azure account, key, or subscription needed.
 - Failure mode for first-time readers is "service not running" (clear) rather than "401 Unauthorized" or "429 Quota Exceeded" (cryptic).
 - Avoids a class of "I don't have an Azure account" support questions.
 
 ## Decision
 
-Default `SmartDocs:Llm:Provider` is `Ollama`. `SmartDocs.Api/appsettings.json` and every sample's `appsettings.json` ship with the Ollama defaults pointing at `http://localhost:11434` with `llama3.2` (chat) + `nomic-embed-text` (embeddings) — the two models the `infra/docker-compose.yml` `ollama-init` sidecar pre-pulls.
+Default `SmartDocs:Llm:Provider` is `Ollama`. `SmartDocs.Api/appsettings.json` and every sample's `appsettings.json` ship with the Ollama defaults pointing at `http://localhost:11434` with `llama3.2` (chat) + `nomic-embed-text` (embeddings) — the two models you pull once with `ollama pull` (see [`../local-setup.md`](../local-setup.md)).
 
 Switching to Azure OpenAI is a config-only change — set:
 
@@ -47,7 +47,7 @@ Or via environment variables: `SmartDocs__Llm__Provider=AzureOpenAI`, `SmartDocs
 ## Consequences
 
 **Positive**:
-- A new reader can `git clone`, `docker compose up -d`, and run any chapter's sample without obtaining an API key.
+- A new reader can `git clone`, install Ollama, `ollama pull` the two models, and run any chapter's sample without obtaining an API key.
 - Tests stay free of secret-management ceremony.
 - Costs nothing to experiment.
 

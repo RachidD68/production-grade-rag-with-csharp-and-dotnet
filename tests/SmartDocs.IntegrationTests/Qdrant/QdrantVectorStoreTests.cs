@@ -7,8 +7,8 @@ namespace SmartDocs.IntegrationTests.Qdrant;
 /// <summary>
 /// Integration tests for <see cref="QdrantVectorStore"/>. Gated behind
 /// <c>RUN_QDRANT_INTEGRATION=1</c> + a running Qdrant on
-/// localhost:6334 (gRPC). When Docker is up via
-/// <c>infra/docker-compose.yml</c>, both conditions are met.
+/// localhost:6334 (gRPC). Install Qdrant natively (see docs/local-setup.md)
+/// to satisfy both conditions.
 /// </summary>
 [Trait("Category", "RealQdrant")]
 public sealed class QdrantVectorStoreTests
@@ -20,7 +20,7 @@ public sealed class QdrantVectorStoreTests
     {
         if (Environment.GetEnvironmentVariable(GateVar) != "1")
         {
-            Console.WriteLine("[SKIP] set RUN_QDRANT_INTEGRATION=1 + start docker compose to run");
+            Console.WriteLine("[SKIP] set RUN_QDRANT_INTEGRATION=1 + start a local Qdrant to run");
             return;
         }
 

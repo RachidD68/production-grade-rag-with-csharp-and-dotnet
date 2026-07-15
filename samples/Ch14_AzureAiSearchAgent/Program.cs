@@ -12,7 +12,7 @@
 //   3. Inline [Source N] citation pattern in the answer.
 //
 // Run:   dotnet run --project samples/Ch14_AzureAiSearchAgent
-// Stack: docker compose up ollama (provides the chat model)
+// Stack: a local Ollama provides the chat model (see docs/local-setup.md)
 
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;

@@ -4,8 +4,8 @@ namespace SmartDocs.Retrieval.Graph;
 
 /// <summary>
 /// Neo4j adapter for <see cref="IGraphStore"/> using the official driver.
-/// Targets the Neo4j 5.26 (community, LTS) server — what the local
-/// <c>infra/docker-compose</c> brings up — with the 6.x SemVer driver.
+/// Targets the Neo4j 5.26 (community, LTS) server — installed natively or via
+/// AuraDB (see docs/local-setup.md) — with the 6.x SemVer driver.
 /// All read/write work runs inside managed transactions
 /// (<see cref="IAsyncSession.ExecuteReadAsync{T}(System.Func{IAsyncQueryRunner, Task{T}}, System.Action{TransactionConfigBuilder})"/>
 /// / <c>ExecuteWriteAsync</c>) so the driver applies its built-in retry on
