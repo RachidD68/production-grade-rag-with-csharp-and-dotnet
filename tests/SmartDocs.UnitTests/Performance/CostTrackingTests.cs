@@ -6,7 +6,7 @@ namespace SmartDocs.UnitTests.Performance;
 
 public sealed class CostTrackingTests
 {
-    private static (double total, string? tenant) CaptureCost(Action act)
+    private static (double total, string? tenant) CaptureCost(string expectedTenant, Action act)
     {
         double total = 0;
         string? tenant = null;
@@ -20,17 +20,31 @@ public sealed class CostTrackingTests
         };
         listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
         {
-            if (instrument.Name == "smartdocs.cost.usd")
+            if (instrument.Name != "smartdocs.cost.usd")
             {
-                total += value;
-                foreach (var t in tags)
+                return;
+            }
+
+            // The CostMeter is process-global, so measurements from other test
+            // classes running in parallel land on this listener too. Scope to
+            // this test's own tenant so a concurrent recording can't inflate the
+            // total (each test uses a unique tenant id).
+            string? measurementTenant = null;
+            foreach (var t in tags)
+            {
+                if (t.Key == CostMeter.TenantTag)
                 {
-                    if (t.Key == CostMeter.TenantTag)
-                    {
-                        tenant = t.Value as string;
-                    }
+                    measurementTenant = t.Value as string;
                 }
             }
+
+            if (measurementTenant != expectedTenant)
+            {
+                return;
+            }
+
+            total += value;
+            tenant = measurementTenant;
         });
         listener.Start();
         act();
@@ -45,7 +59,7 @@ public sealed class CostTrackingTests
         var inner = new UsageChatClient(inputTokens: 1_000, outputTokens: 500);
         var client = new CostTrackingChatClient(inner, tenant: "contoso", pricing);
 
-        var (total, tenant) = CaptureCost(() =>
+        var (total, tenant) = CaptureCost("contoso", () =>
             client.GetResponseAsync([new ChatMessage(ChatRole.User, "hi")]).GetAwaiter().GetResult());
 
         // 1000 * 1e-6 + 500 * 2e-6 = 0.001 + 0.001 = 0.002
@@ -61,7 +75,7 @@ public sealed class CostTrackingTests
         var inner = new UsageEmbeddingGenerator(inputTokens: 2_000);
         var generator = new CostTrackingEmbeddingGenerator(inner, tenant: "fabrikam", pricing);
 
-        var (total, tenant) = CaptureCost(() =>
+        var (total, tenant) = CaptureCost("fabrikam", () =>
             generator.GenerateAsync(["a", "b"]).GetAwaiter().GetResult());
 
         Assert.Equal(0.01, total, precision: 9); // 2000 * 5e-6
