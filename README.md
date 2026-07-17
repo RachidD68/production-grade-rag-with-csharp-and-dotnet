@@ -1,191 +1,156 @@
-# Production-Grade RAG with C# and .NET — Companion Code
+# Production-Grade RAG with C# and .NET
 
-Companion code for **_Production-Grade RAG with C# and .NET: Building Retrieval-Augmented Generation Systems with C#, the Microsoft Agent Framework, and Azure_** by [Rachid Dahir](https://github.com/rachiddahir) (2026 edition).
+<p align="center">
+  <img src="assets/cover-front.png" alt="Production-Grade RAG with C# and .NET — cover" width="420">
+</p>
 
-> The .NET solution, samples, and namespaces stay under the `RAG-in-DotNet` identifier — that is the code path; the title above is the reader-facing brand.
+<p align="center"><strong>Building Retrieval-Augmented Generation Systems with C#, the Microsoft Agent Framework, and Azure</strong></p>
 
-> **Status — All 9 phases ✅ complete (Phases 0–8).** All 25 chapters from the syllabus have been mapped to runnable, tested code: 18 src/ projects + 4 test projects + 5 chapter samples + tooling + infra. **152 tests pass** under warnings-as-errors and format check. See [`docs/chapter-map.md`](docs/chapter-map.md) for the per-chapter file map and [`docs/architecture.md`](docs/architecture.md) for the system view. The Phase 8 polish backlog (deferred chapter samples and stretch features) lives in [`samples/README.md`](samples/README.md) and the per-phase reports under [`docs/phase-reports/`](docs/phase-reports).
+<p align="center"><em>From a Hello-World retriever in ten minutes to an evaluated, secured, compliant RAG system running on Azure — in C# 14 and .NET 10.</em></p>
 
----
+<p align="center"><strong>📖 <a href="https://leanpub.com/production-graderagwithcsandnet">Read it on Leanpub</a> — pay what you want.</strong></p>
 
-## What you get
-
-A single evolving project — **Contoso SmartDocs** — built across 25 chapters and 7 parts:
-
-- A 14-project **Clean / DDD-ish** solution (Core, Ingestion, Retrieval, Reranking, Routing, Generation, Agents, Mcp, Security, Evaluation, Operations, Performance, Api, Dashboard) plus a Vertical Slice variant in Ch 25.
-- **Six document silos** (HR Policies, Technical Docs, Financial Reports, Legal Contracts, Product Catalog, Release Notes & Support Tickets) with full Ch 11 metadata schema baked in from day 1.
-- **Native local dev** (no Docker): Ollama (`nomic-embed-text` + `llama3.2`) for the default LLM + embeddings; the app and tests default to an in-memory vector store and cache. Optional persistent stores — PostgreSQL + pgvector, Qdrant, Neo4j, Redis — install natively per chapter. See [`docs/local-setup.md`](docs/local-setup.md).
-- **Quality gates**: `dotnet build` warnings-as-errors, `dotnet format --verify-no-changes`, xUnit tests, GitHub Actions CI on every PR.
+<p align="center"><sub>The book itself ships through Leanpub. This repository hosts the companion code, errata, and reader feedback.</sub></p>
 
 ---
 
-## Versions Covered
+## What's in this book
 
-| Component | Pinned to | Status (May 2026) |
-|---|---|---|
-| .NET SDK | 10.0.x (`global.json`) | GA |
-| C# language | latest (14) | GA |
-| Microsoft Agent Framework (`Microsoft.Agents.AI`) | 1.3.0 | **GA April 3, 2026** |
-| `Microsoft.Agents.AI.Foundry` | 1.3.0 | GA |
-| `Microsoft.Agents.AI.Workflows` | 1.3.0 | GA — graph-based multi-agent |
-| `Microsoft.Agents.AI.A2A` | 1.3.0-preview.* | **Preview** — A2A 1.0 support coming soon |
-| `Microsoft.Extensions.AI` | 10.5.1 | GA (10.x is the active line; 9.x covered in errata) |
-| `Microsoft.Extensions.VectorData.Abstractions` | 10.5.0 | **Abstractions GA**; most connectors still preview |
-| `Microsoft.Extensions.Http.Resilience` / `.Resilience` | 10.5.0 | GA |
-| `Microsoft.ML.Tokenizers` | 2.0.0 | GA |
-| `OllamaSharp` | 5.4.25 | GA — replaces deprecated `Microsoft.Extensions.AI.Ollama` |
-| `Qdrant.Client` | 1.17.0 | GA |
-| `Neo4j.Driver` | 6.0.0 | GA — driver SemVer; server is on CalVer 2025.x |
-| `Polly` | 8.6.6 | GA |
-| `OpenTelemetry` | 1.15.3 | GA |
-| `ModelContextProtocol` | 1.2.0 | GA — donated to the Linux Foundation, December 2025 |
-| Azure AI Search agentic retrieval | REST `2025-11-01-preview` | **Preview** |
-| Semantic Kernel | 1.x | maintenance + selective features through ≥ April 2027 |
-| AutoGen | community-maintained, no new features | — |
+**Retrieval-Augmented Generation** is how you make a language model answer from *your* documents instead of improvising from its training data. This book builds one production system — **Contoso SmartDocs** — across twenty-five chapters, entirely in **C# 14 / .NET 10**, on the **Microsoft Agent Framework 1.13.0** and **Microsoft.Extensions.AI**.
 
-The truth-source for all NuGet pins is [`Directory.Packages.props`](Directory.Packages.props). Major version drift between this README and the original mission brief is documented in [ADR-0005](docs/decisions/0005-version-drift-from-mission-brief.md).
+Across seven parts you go from a ten-minute Hello-World RAG through the whole pipeline — embeddings, chunking with Anthropic's Contextual Retrieval, multimodal content, vector databases, indexing, retrieval, re-ranking, and first-class SSE streaming — into query intelligence, graph and hybrid storage, and the modern design patterns: HyDE, RAPTOR, RAG-Fusion, Self-RAG, CRAG, Vectorless, GraphRAG, LazyGraphRAG, MCP-served retrieval, and multi-agent orchestration. The last third is the part most RAG books skip: evaluation, latency and cost, freshness and drift, security, trust and compliance, and a capstone that ships to Azure with Bicep, runbooks, and an eval gate in CI.
+
+Every code listing is anchored in a runnable project in this repository, every package is pinned centrally, and the whole solution builds warnings-as-errors with **443 passing tests**.
+
+## Table of Contents
+
+| # | Chapter | Part |
+|---|---------|------|
+| 1 | The AI Landscape: When to Use RAG, When Not, and What Replaced What in 2026 | **I — Foundations** |
+| 2 | The .NET Toolkit for RAG Development | I |
+| 3 | Embeddings: Turning Text into Vectors | **II — The RAG Pipeline** |
+| 4 | Chunking and Contextual Retrieval — The #1 Tuning Knob | II |
+| 5 | Multimodal Content: Text, Tables, Images, and Charts | II |
+| 6 | Vector Databases: Storing and Searching Embeddings | II |
+| 7 | Indexing Strategies: From Chunks to Intelligent Organization | II |
+| 8 | The Retriever: Dense, Sparse, and Hybrid Search | II |
+| 9 | Re-ranking: The Production Baseline | II |
+| 10 | The Complete RAG Pipeline: Query to Response | II |
+| 11 | Metadata Filtering and Query Construction | **III — Query Intelligence** |
+| 12 | Query Routing and Conversational Multi-Turn RAG | III |
+| 13 | Graph Databases for RAG | **IV — Graph and Hybrid Storage** |
+| 14 | Hybrid Databases: The Production Answer | IV |
+| 15 | Classic Enhancements: HyDE, RAPTOR, RAG-Fusion, Self-RAG, CRAG | **V — RAG Design Patterns** |
+| 16 | Vectorless RAG: Navigating by Structure | V |
+| 17 | GraphRAG, LazyGraphRAG, and Hybrid RAG in Production | V |
+| 18 | Model Context Protocol: Retrieval as a Tool Service | V |
+| 19 | Agentic RAG, Multi-Agent RAG, and Agentic Memory | V |
+| 20 | Evaluation and Metrics: Measuring RAG Quality | **VI — Production Concerns** |
+| 21 | Latency, Cost, Performance, and .NET Optimization | VI |
+| 22 | Freshness, Drift, and Model Migration | VI |
+| 23 | Security: Prompt Injection and Adversarial Indexing | VI |
+| 24 | Trust by Design: Grounding, Citations, and Compliance | VI |
+| 25 | Building a Production RAG Application: From Code to Cloud | **VII — Capstone Project** |
+
+Nine appendices follow: worked exercise solutions, a design-pattern quick reference, a vector-database comparison, an embedding benchmark, a Python-to-.NET Rosetta stone, this repository's tour, a production debugging checklist, prompt-engineering patterns, and the math behind RAG.
 
 ---
 
-## Quick Start
+## Companion code
+
+### Target stack
+
+- **.NET 10** (LTS) / **C# 14**
+- **Microsoft Agent Framework 1.13.0**
+- **Microsoft.Extensions.AI 10.7.0**
+- Visual Studio 2026, or VS Code with the C# Dev Kit
+
+Every package version is pinned centrally in `Directory.Packages.props` (Central Package Management); individual `.csproj` files reference packages without version numbers.
+
+> The solution, projects, and namespaces sit under the `RAG-in-DotNet` / `SmartDocs` identifiers — that is the code path; the title above is the reader-facing brand.
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- **[Ollama](https://ollama.com)** — the default provider, so the samples cost nothing and need no API key. The samples also support Azure OpenAI; Chapter 2 covers the switch.
+
+Everything installs **natively — there is no Docker**. The API and the whole test suite run against an in-memory vector store and cache, so Ollama is the only service you actually need:
 
 ```bash
-# 1. Prerequisites
-#    - .NET 10 SDK         https://dot.net
-#    - Ollama              https://ollama.com   (local LLM + embeddings)
-#    - Git                 https://git-scm.com
-
-# 2. Clone & build
-git clone https://github.com/rachiddahir/RAG-in-DotNet.git
-cd RAG-in-DotNet
-dotnet restore
-dotnet build
-
-# 3. Start Ollama and pull the default models (no Docker — see docs/local-setup.md)
 ollama pull nomic-embed-text
 ollama pull llama3.2
-
-# 4. Generate the 300-document Contoso dataset
-dotnet run --project tools/generate-dataset -- --small --output data
-
-# 5. Run all tests
-dotnet test
-
-# 6. Run the chapter samples (require Ollama from step 3)
-dotnet run --project samples/Ch01_HelloWorldRag      # Ch 1: 80-line Hello-World RAG
-dotnet run --project samples/Ch02_SkToMafMigration   # Ch 2: SK→MAF migration walk-through
-dotnet run --project src/SmartDocs.Api               # /health: shows the active provider + models
 ```
 
----
+Persistent stores — PostgreSQL + pgvector, Qdrant, Neo4j, Redis — are **optional**, installed only for the chapters that use them. Per-service steps, ports, and the `RUN_*_INTEGRATION` test gates are in [`docs/local-setup.md`](docs/local-setup.md).
 
-## Repository Layout
-
-```
-RAG-in-DotNet/
-├── src/                          14 C# projects evolving across the book
-│   ├── SmartDocs.Core            domain models, interfaces, shared abstractions
-│   ├── SmartDocs.Ingestion       parsing, chunking, contextual retrieval, embedding, indexing
-│   ├── SmartDocs.Retrieval       dense, sparse, hybrid, graph, vectorless retrievers
-│   ├── SmartDocs.Reranking       Cohere, BGE, cross-encoder rerankers
-│   ├── SmartDocs.Routing         rule-based, semantic, multi-source routing + AgentSession
-│   ├── SmartDocs.Generation      prompt templates, context assembly, citation tracking
-│   ├── SmartDocs.Agents          AIAgent / ChatClientAgent setups, tools, Workflow API
-│   ├── SmartDocs.Mcp             MCP server + client tools
-│   ├── SmartDocs.Security        sanitization, anomaly detection, content filtering
-│   ├── SmartDocs.Evaluation      RAGAS-style metrics, DeepEval bridge, eval harnesses
-│   ├── SmartDocs.Operations      freshness, drift, Drift-Adapter, dedup, GDPR deletion
-│   ├── SmartDocs.Performance     caching, Span<T>, Polly, OpenTelemetry, Aspire wiring
-│   ├── SmartDocs.Api             ASP.NET Core 10 Minimal API, first-class SSE streaming
-│   └── SmartDocs.Dashboard       Blazor Server eval dashboard (Ch 20)
-│
-├── tests/
-│   ├── SmartDocs.UnitTests       xUnit
-│   ├── SmartDocs.IntegrationTests env-gated; hit natively-installed localhost services
-│   ├── SmartDocs.EvalTests       quality gates with thresholds
-│   └── SmartDocs.SecurityTests   25 OWASP AISVS C08 red-team cases (Ch 23)
-│
-├── samples/                      one folder per chapter that has a micro-project
-├── data/                         6 silos + eval-sets/ (populated by tools/generate-dataset)
-├── tools/
-│   ├── generate-dataset          deterministic synthetic-corpus generator
-│   ├── eval-runner               (Phase 6) — JUnit XML emitter for CI gates
-│   └── deepeval-bridge           (Phase 6) — Python microservice / subprocess wrapper
-├── infra/
-│   └── azure/                    (Phase 7) — Bicep templates
-├── .github/workflows/
-│   ├── ci.yml                    build + test on PRs
-│   └── ci-eval.yml               (Phase 6) — eval gates that block PRs
-├── docs/
-│   ├── architecture.md           Mermaid diagrams, kept current per phase
-│   ├── chapter-map.md            chapter → projects/files/tests/samples
-│   ├── decisions/                ADRs (Nygard format)
-│   └── phase-reports/            one per phase
-├── Directory.Packages.props
-├── Directory.Build.props
-├── global.json
-├── .editorconfig
-└── RAG-in-DotNet.slnx            (.NET 10 default — XML format, replaces .sln)
-```
-
----
-
-## Build Plan
-
-The companion code is built in 9 incremental phases. All phases are complete.
-
-| Phase | Chapters | Scope | Status |
-|---|---|---|---|
-| 0 | — | Repo bootstrap | ✅ |
-| 1 | Ch 1–2 | Foundations, Hello-World RAG, SK→MAF migration | ✅ |
-| 2 | Ch 3–10 | Core pipeline: embeddings → chunking → multimodal → vector DBs → indexing → retrieval → re-ranking → SSE | ✅ |
-| 3 | Ch 11–12 | Query intelligence: metadata filters, query construction, routing, conversational rewriting | ✅ |
-| 4 | Ch 13–14 | Graph + hybrid storage: Neo4j adapter, EntityExtractor, FusionService | ✅ |
-| 5 | Ch 15–19 | Design patterns: HyDE / RAG-Fusion / CRAG, Vectorless, GraphRAG / LazyGraphRAG, MCP, Multi-agent | ✅ |
-| 6 | Ch 20–24 | Production: evaluation, performance, drift / GDPR, security (27-test red team), citations + EU AI Act audit | ✅ |
-| 7 | Ch 25 | Capstone: `AddSmartDocsRagPipeline()`, Bicep, Vertical Slice variant | ✅ |
-| 8 | — | Polish: per-phase reports, samples README, chapter map, architecture docs | ✅ |
-
----
-
-## Chapter Map (25 chapters)
-
-The chapter-by-chapter mapping of book content to code lives in [`docs/chapter-map.md`](docs/chapter-map.md) and is updated at the end of every phase.
-
----
-
-## Working with the dataset
+### Clone & build
 
 ```bash
-# Default: --small, seed 42, output ../../data (resolved from the tool's CWD)
-dotnet run --project tools/generate-dataset
-
-# Override seed and output location
-dotnet run --project tools/generate-dataset -- --seed 123 --output /tmp/my-corpus
-
-# Verify determinism by hand
-diff $(dotnet run -q --project tools/generate-dataset -- --output /tmp/a)/manifest.sha256 \
-     $(dotnet run -q --project tools/generate-dataset -- --output /tmp/b)/manifest.sha256
+git clone https://github.com/RachidD68/production-grade-rag-with-csharp-and-dotnet.git
+cd production-grade-rag-with-csharp-and-dotnet
+dotnet build RAG-in-DotNet.slnx
+dotnet test
 ```
 
-`--large` (the 5 000-document dataset) is a Phase 8 stretch goal and currently throws.
+Open `RAG-in-DotNet.slnx` once and every project loads together. `dotnet test` should report **443 passing tests** on a clean clone.
 
----
+### Run a sample
 
-## Contributing
+```bash
+# Chapter 1: the 10-minute Hello-World RAG
+dotnet run --project samples/Ch01_HelloWorldRag
 
-Issues and PRs welcome — please follow the conventional-commit prefixes already in `git log` (`chore:`, `feat:`, `fix:`, `docs:`).
+# The Minimal API — /health shows the active provider and models
+dotnet run --project src/SmartDocs.Api
+```
 
-The repo enforces:
+First generate the synthetic Contoso corpus (six document silos) if a sample needs it:
 
-- `dotnet build` with `<TreatWarningsAsErrors>true>`
-- `dotnet format --verify-no-changes`
-- xUnit tests pass on `ubuntu-latest` and `windows-latest`
+```bash
+dotnet run --project tools/generate-dataset -- --small --output data
+```
 
-Run all three locally before opening a PR; CI runs them as gates.
+### Configuration
 
----
+Provider settings live in `appsettings.json`; secrets belong in a gitignored `appsettings.local.json` or in [.NET User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) — never in source control. The default is Ollama on `http://localhost:11434`. To switch to Azure OpenAI:
+
+```bash
+dotnet user-secrets set "SmartDocs:Llm:Provider" "AzureOpenAI"
+dotnet user-secrets set "SmartDocs:Llm:Endpoint" "https://YOUR-RESOURCE.openai.azure.com/"
+dotnet user-secrets set "SmartDocs:Llm:ApiKey" "YOUR-KEY"
+```
+
+Embedding dimensions differ between providers (`nomic-embed-text` is 768, `text-embedding-3-small` is 1536), and vector collections are dimension-bound — switching providers means re-embedding the corpus. Chapter 22 makes that an explicit lesson rather than an accident.
+
+### Repository layout
+
+| Folder | Chapter | Topic |
+|--------|---------|-------|
+| `src/SmartDocs.Core/` | 1–2, 11 | Domain models, the `IVectorStore` / `IRetriever` ports, DI, metadata filters |
+| `src/SmartDocs.Ingestion/` | 3–5, 7 | Parsing, chunking, Contextual Retrieval, embeddings, indexing |
+| `src/SmartDocs.Retrieval/` | 6, 8, 13–17 | Dense, sparse, hybrid, graph, and vectorless retrievers; vector stores |
+| `src/SmartDocs.Retrieval.{Qdrant,Postgres,AzureSearch}/` | 14 | Backend leaf packages over the hybrid retrievers |
+| `src/SmartDocs.Reranking/` (+ `.Cohere`, `.Onnx`) | 9 | Cohere, ONNX cross-encoder, and LLM re-rankers |
+| `src/SmartDocs.Routing/` | 11–12 | Query construction, self-query, routing, conversational rewriting |
+| `src/SmartDocs.Generation/` | 10 | Prompt templates, context assembly, citation tracking |
+| `src/SmartDocs.Agents/` | 19 | `ChatClientAgent`, tools, the Workflow graph, agentic memory |
+| `src/SmartDocs.Mcp/` | 18 | MCP server tools and resources |
+| `src/SmartDocs.Security/` | 23 | Sanitization, injection detection, redaction, hash-chained audit |
+| `src/SmartDocs.Evaluation/` | 20 | Retrieval / generation metrics, statistical significance |
+| `src/SmartDocs.Operations/` | 22, 24 | Freshness, drift adapter, GDPR erasure, compliance |
+| `src/SmartDocs.Performance/` | 21 | Caching, SIMD cosine, Polly, OpenTelemetry, cost metering |
+| `src/SmartDocs.Api/` | 10, 25 | ASP.NET Core Minimal API with first-class SSE streaming |
+| `src/SmartDocs.Dashboard/` | 20 | Blazor evaluation dashboard |
+| `samples/` | 1–22 | One runnable micro-project per chapter that has one |
+| `tests/` | — | 443 xUnit tests: unit, security (25-case red team), integration, eval |
+| `tools/` | 20, 22, 25 | Dataset generator, eval-runner (`--gate`), smoke/load test, reindex |
+| `deploy/` | 25 | Bicep templates, prod deployment and NuGet publish workflows |
+| `docs/` | — | Local setup, architecture, ADRs, runbooks, preflight checklist |
+
+## Errata & feedback
+
+Spotted a typo, a code sample that won't compile, or an outdated API? Please open an [**errata report**](../../issues/new?template=errata.yml). Reader corrections are how the book gets better.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE) (added in Phase 7).
+Companion code released under the [MIT License](LICENSE). The book text is © 2026 Rachid Dahir and distributed via [Leanpub](https://leanpub.com/production-graderagwithcsandnet).

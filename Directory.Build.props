@@ -36,7 +36,8 @@
     <Company>Rachid Dahir</Company>
     <Product>RAG in .NET — Companion Code</Product>
     <Copyright>© 2026 Rachid Dahir</Copyright>
-    <RepositoryUrl>https://github.com/rachiddahir/RAG-in-DotNet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/RachidD68/production-grade-rag-with-csharp-and-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/RachidD68/production-grade-rag-with-csharp-and-dotnet</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <!-- Single source of truth for the published-package version (Ch 25). The
