@@ -8,11 +8,11 @@ namespace RagInDotNet.Samples.Ch18_McpServer;
 /// Illustrative MCP <em>client</em> using the Microsoft Agent Framework (MAF)
 /// AIAgent idiom — the path a host application takes to consume this server's
 /// tools. It is compiled (so the API surface is verified against the pinned
-/// ModelContextProtocol 1.4.0 + Microsoft.Agents.AI 1.10.0) but never invoked by
+/// ModelContextProtocol 1.4.0 + Microsoft.Agents.AI 1.13.0) but never invoked by
 /// <c>Program</c>: <see cref="RunAsync"/> needs a real <see cref="IChatClient"/>
 /// (OpenAI / Azure / Anthropic), so it cannot run offline.
 /// <para>
-/// Verified API surface (1.4.0 / 1.10.0):
+/// Verified API surface (1.4.0 / 1.13.0):
 /// <list type="bullet">
 ///   <item><c>McpClient.CreateAsync(IClientTransport, ...)</c> — note: <c>McpClientFactory</c> no longer exists.</item>
 ///   <item><c>StdioClientTransport(StdioClientTransportOptions, ILoggerFactory?)</c>.</item>
