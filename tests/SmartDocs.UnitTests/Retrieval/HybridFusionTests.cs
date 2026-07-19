@@ -14,7 +14,7 @@ public sealed class HybridFusionTests
     }
 
     [Fact]
-    public void Weighted_fusion_blends_normalised_scores()
+    public void Weighted_fusion_blends_normalized_scores()
     {
         var a = new[] {
             new RetrievalResult(Chunk("alpha"), 1.0),

@@ -106,12 +106,12 @@ public static class StatisticalSignificance
         double phat = successes / n;
         double z2 = z * z;
         double denom = 1 + z2 / n;
-        double centre = (phat + z2 / (2 * n)) / denom;
+        double center = (phat + z2 / (2 * n)) / denom;
         double margin = z * Math.Sqrt(phat * (1 - phat) / n + z2 / (4 * n * n)) / denom;
 
         return new ConfidenceInterval(
-            Lower: Math.Clamp(centre - margin, 0, 1),
-            Upper: Math.Clamp(centre + margin, 0, 1));
+            Lower: Math.Clamp(center - margin, 0, 1),
+            Upper: Math.Clamp(center + margin, 0, 1));
     }
 
     /// <summary>

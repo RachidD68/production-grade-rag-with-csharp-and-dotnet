@@ -147,7 +147,7 @@ internal sealed class StubGraphStore : IGraphStore
 }
 
 /// <summary>
-/// Offline <see cref="IChatClient"/> for the LazyGraphRAG subgraph summariser and
+/// Offline <see cref="IChatClient"/> for the LazyGraphRAG subgraph summarizer and
 /// the entity extractor. It never calls a model: it echoes a deterministic
 /// "summary" derived from the prompt's subgraph block (or an empty extraction),
 /// so <c>graph_search</c> works with no API key.

@@ -103,8 +103,8 @@ internal static class HelloWorldRag
     /// <summary>
     /// Cosine similarity over two vectors. Throws if dimensions differ.
     /// Accumulates in <see cref="double"/> to stay safe against float overflow
-    /// on un-normalised, high-dimensional inputs; modern embeddings are
-    /// normalised so the precision delta is invisible in practice.
+    /// on un-normalized, high-dimensional inputs; modern embeddings are
+    /// normalized so the precision delta is invisible in practice.
     /// </summary>
     public static float Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {

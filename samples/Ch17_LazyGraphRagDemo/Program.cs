@@ -56,19 +56,19 @@ var retriever = new LazyGraphRagRetriever(extractor, graph, llm, maxHops: 2, cac
 Console.WriteLine("--- Query 1 (cold cache) ---");
 var first = await retriever.RetrieveAsync("Tell me about Acme", topK: 1).ConfigureAwait(false);
 Console.WriteLine($"  Summary: {first[0].Chunk.Text}");
-Console.WriteLine($"  LLM summarise calls: {llm.SummariseCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
+Console.WriteLine($"  LLM summarize calls: {llm.SummarizeCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
 Console.WriteLine();
 
 Console.WriteLine("--- Query 2 (same subgraph, warm cache) ---");
 var second = await retriever.RetrieveAsync("What do we know about Acme?", topK: 1).ConfigureAwait(false);
 Console.WriteLine($"  Summary: {second[0].Chunk.Text}");
-Console.WriteLine($"  LLM summarise calls: {llm.SummariseCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
+Console.WriteLine($"  LLM summarize calls: {llm.SummarizeCalls} | cache Hits={cache.Hits} Misses={cache.Misses}");
 Console.WriteLine();
 
 // --- What the numbers mean. ---
 Console.WriteLine("--- Result ---");
 Console.WriteLine($"  Two queries resolved to the same subgraph.");
-Console.WriteLine($"  The LLM summarised only {llm.SummariseCalls} time(s); query 2 was served from cache.");
+Console.WriteLine($"  The LLM summarized only {llm.SummarizeCalls} time(s); query 2 was served from cache.");
 Console.WriteLine($"  cache Hits={cache.Hits}, Misses={cache.Misses}.");
 Console.WriteLine();
 Console.WriteLine("  Insight: LazyGraphRAG pays for summarization per query, but caching");
@@ -85,9 +85,9 @@ return;
 /// </summary>
 internal sealed class CountingChatClient(Func<string, string> respond) : IChatClient
 {
-    private int _summariseCalls;
+    private int _summarizeCalls;
 
-    public int SummariseCalls => _summariseCalls;
+    public int SummarizeCalls => _summarizeCalls;
 
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
@@ -100,7 +100,7 @@ internal sealed class CountingChatClient(Func<string, string> respond) : IChatCl
             messages.Where(m => m.Role == ChatRole.User).Select(m => m.Text));
         if (text.Contains("Subgraph:", StringComparison.Ordinal))
         {
-            Interlocked.Increment(ref _summariseCalls);
+            Interlocked.Increment(ref _summarizeCalls);
         }
         return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, respond(text))));
     }

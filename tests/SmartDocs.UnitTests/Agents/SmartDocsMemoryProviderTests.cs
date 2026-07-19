@@ -16,7 +16,7 @@ namespace SmartDocs.UnitTests.Agents;
 /// Tests for the self-hosted <see cref="SmartDocsMemoryProvider"/>: a recall/remember
 /// round-trip and, critically, tenant isolation — user B's similar query must never
 /// surface user A's facts. Fully offline: an FNV bag-of-words embedder, the in-memory
-/// vector store, and a deterministic stub summariser.
+/// vector store, and a deterministic stub summarizer.
 /// </summary>
 public sealed partial class SmartDocsMemoryProviderTests
 {
@@ -28,13 +28,13 @@ public sealed partial class SmartDocsMemoryProviderTests
         var store = new InMemoryVectorStore("mem-roundtrip");
         await store.EnsureCollectionExistsAsync();
         var embeddings = BuildEmbeddingService();
-        var summariser = new ScriptedChatClient(_ => "The user works in the Montreal office.");
+        var summarizer = new ScriptedChatClient(_ => "The user works in the Montreal office.");
 
         // Turn 1 (user A): the agent answers, then the provider remembers a fact.
-        await RememberAsync(store, embeddings, summariser, "user-A", "Where am I based?");
+        await RememberAsync(store, embeddings, summarizer, "user-A", "Where am I based?");
 
         // Turn 2 (user A, fresh session): recall must surface the stored fact.
-        var recall = await RecallAsync(store, embeddings, summariser, "user-A", "Which office am I in?");
+        var recall = await RecallAsync(store, embeddings, summarizer, "user-A", "Which office am I in?");
 
         Assert.Contains("Montreal", recall, StringComparison.Ordinal);
     }
@@ -45,17 +45,17 @@ public sealed partial class SmartDocsMemoryProviderTests
         var store = new InMemoryVectorStore("mem-isolation");
         await store.EnsureCollectionExistsAsync();
         var embeddings = BuildEmbeddingService();
-        var summariser = new ScriptedChatClient(_ => "The user's favorite project is codenamed Falcon.");
+        var summarizer = new ScriptedChatClient(_ => "The user's favorite project is codenamed Falcon.");
 
         // User A remembers a fact.
-        await RememberAsync(store, embeddings, summariser, "user-A", "My favorite project is Falcon.");
+        await RememberAsync(store, embeddings, summarizer, "user-A", "My favorite project is Falcon.");
 
         // User B asks an almost identical question — must NOT see user A's fact.
-        var recallB = await RecallAsync(store, embeddings, summariser, "user-B", "What is my favorite project?");
+        var recallB = await RecallAsync(store, embeddings, summarizer, "user-B", "What is my favorite project?");
         Assert.DoesNotContain("Falcon", recallB, StringComparison.Ordinal);
 
         // Sanity: user A on a fresh session DOES see it, proving the fact was stored.
-        var recallA = await RecallAsync(store, embeddings, summariser, "user-A", "What is my favorite project?");
+        var recallA = await RecallAsync(store, embeddings, summarizer, "user-A", "What is my favorite project?");
         Assert.Contains("Falcon", recallA, StringComparison.Ordinal);
     }
 
@@ -83,11 +83,11 @@ public sealed partial class SmartDocsMemoryProviderTests
     private static async Task RememberAsync(
         InMemoryVectorStore store,
         EmbeddingService embeddings,
-        IChatClient summariser,
+        IChatClient summarizer,
         string userId,
         string question)
     {
-        var provider = new SmartDocsMemoryProvider(store, embeddings, summariser);
+        var provider = new SmartDocsMemoryProvider(store, embeddings, summarizer);
         var agent = SmartDocsAgent.CreateWithMemory(
             new CapturingChatClient(), provider, new ConstantRetriever([]));
         var session = await agent.CreateSessionAsync();
@@ -99,11 +99,11 @@ public sealed partial class SmartDocsMemoryProviderTests
     private static async Task<string> RecallAsync(
         InMemoryVectorStore store,
         EmbeddingService embeddings,
-        IChatClient summariser,
+        IChatClient summarizer,
         string userId,
         string question)
     {
-        var provider = new SmartDocsMemoryProvider(store, embeddings, summariser);
+        var provider = new SmartDocsMemoryProvider(store, embeddings, summarizer);
         var chat = new CapturingChatClient();
         var agent = SmartDocsAgent.CreateWithMemory(chat, provider, new ConstantRetriever([]));
         var session = await agent.CreateSessionAsync();
@@ -198,7 +198,7 @@ public sealed partial class SmartDocsMemoryProviderTests
         }
     }
 
-    // Deterministic summariser returning a scripted fact line.
+    // Deterministic summarizer returning a scripted fact line.
     private sealed class ScriptedChatClient : IChatClient
     {
         private readonly Func<string, string> _respond;

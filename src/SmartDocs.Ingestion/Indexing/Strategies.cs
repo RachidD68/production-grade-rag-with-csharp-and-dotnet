@@ -103,7 +103,7 @@ public sealed class SummaryIndexingStrategy : IIndexingStrategy
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(chunk);
-        var prompt = $"Summarise the following passage in one or two sentences.\n\nPassage:\n{chunk.Text}";
+        var prompt = $"Summarize the following passage in one or two sentences.\n\nPassage:\n{chunk.Text}";
         var response = await _chat.GetResponseAsync(prompt, cancellationToken: cancellationToken).ConfigureAwait(false);
         var summary = (response.Text ?? string.Empty).Trim();
         if (string.IsNullOrEmpty(summary))

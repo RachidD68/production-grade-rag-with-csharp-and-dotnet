@@ -48,7 +48,7 @@ public sealed class GraphRagTests
     }
 
     [Fact]
-    public async Task LazyGraphRagRetriever_summarises_subgraph_only_at_query_time()
+    public async Task LazyGraphRagRetriever_summarizes_subgraph_only_at_query_time()
     {
         var extractorChat = new StubChatClient(_ =>
             "{\"entities\":[{\"id\":\"acme\",\"type\":\"Client\",\"name\":\"Acme\"}]}");
@@ -82,18 +82,18 @@ public sealed class GraphRagTests
             new Dictionary<string, string> { ["industry"] = "manufacturing" }));
 
         // Counts only summarization calls (the prompt that carries "Subgraph:").
-        var summariser = new CountingChatClient(p =>
+        var summarizer = new CountingChatClient(p =>
             p.Contains("Subgraph:", StringComparison.Ordinal)
                 ? "Acme is a manufacturing client."
                 : "?");
         var cache = new InMemorySummaryCache();
-        var lazy = new LazyGraphRagRetriever(extractor, graph, summariser, maxHops: 2, cache: cache);
+        var lazy = new LazyGraphRagRetriever(extractor, graph, summarizer, maxHops: 2, cache: cache);
 
         var first = await lazy.RetrieveAsync("Tell me about Acme", topK: 1);
         var second = await lazy.RetrieveAsync("What do we know about Acme?", topK: 1);
 
         // The subgraph is identical both times, so the LLM summarizes exactly once.
-        Assert.Equal(1, summariser.SummariseCalls);
+        Assert.Equal(1, summarizer.SummarizeCalls);
         Assert.Equal(1, cache.Hits);
         Assert.Equal(1, cache.Misses);
         Assert.Contains("manufacturing", first[0].Chunk.Text, StringComparison.Ordinal);
@@ -111,23 +111,23 @@ public sealed class GraphRagTests
         graph.Entities.Add(new GraphEntity("acme", "Client", "Acme",
             new Dictionary<string, string> { ["industry"] = "manufacturing" }));
 
-        var summariser = new CountingChatClient(p =>
+        var summarizer = new CountingChatClient(p =>
             p.Contains("Subgraph:", StringComparison.Ordinal)
                 ? "Acme is a manufacturing client."
                 : "?");
         var cache = new InMemorySummaryCache();
-        var lazy = new LazyGraphRagRetriever(extractor, graph, summariser, maxHops: 2, cache: cache);
+        var lazy = new LazyGraphRagRetriever(extractor, graph, summarizer, maxHops: 2, cache: cache);
 
         // Prime the cache.
         _ = await lazy.RetrieveAsync("Tell me about Acme", topK: 1);
-        Assert.Equal(1, summariser.SummariseCalls);
+        Assert.Equal(1, summarizer.SummarizeCalls);
 
         // A member entity's facts changed — invalidate every summary built from it.
         await cache.EvictByEntityAsync("acme");
 
         // Next query must miss and summarize again.
         _ = await lazy.RetrieveAsync("Tell me about Acme", topK: 1);
-        Assert.Equal(2, summariser.SummariseCalls);
+        Assert.Equal(2, summarizer.SummarizeCalls);
         Assert.Equal(2, cache.Misses);
     }
 
@@ -212,11 +212,11 @@ public sealed class GraphRagTests
     private sealed class CountingChatClient : IChatClient
     {
         private readonly Func<string, string> _respond;
-        private int _summariseCalls;
+        private int _summarizeCalls;
 
         public CountingChatClient(Func<string, string> respond) => _respond = respond;
 
-        public int SummariseCalls => _summariseCalls;
+        public int SummarizeCalls => _summarizeCalls;
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
@@ -228,7 +228,7 @@ public sealed class GraphRagTests
                 messages.Where(m => m.Role == ChatRole.User).Select(m => m.Text));
             if (text.Contains("Subgraph:", StringComparison.Ordinal))
             {
-                Interlocked.Increment(ref _summariseCalls);
+                Interlocked.Increment(ref _summarizeCalls);
             }
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _respond(text))));
         }

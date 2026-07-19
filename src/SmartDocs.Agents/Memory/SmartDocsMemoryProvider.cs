@@ -17,7 +17,7 @@ namespace SmartDocs.Agents.Memory;
 ///   question, search the caller's memory partition, and return the top facts as a
 ///   system message MAF prepends to the request.</item>
 ///   <item><b>Remember</b> (<see cref="InvokedCoreAsync"/>) — after the turn,
-///   distil one to three durable facts (via the summariser, with a deterministic
+///   distil one to three durable facts (via the summarizer, with a deterministic
 ///   fallback) and upsert them into the vector store.</item>
 /// </list>
 ///
@@ -57,7 +57,7 @@ public sealed class SmartDocsMemoryProvider : AIContextProvider
 
     private readonly IVectorStore _store;
     private readonly IEmbeddingService _embeddings;
-    private readonly IChatClient _summariser;
+    private readonly IChatClient _summarizer;
     private readonly int _recallTopK;
 
     /// <summary>
@@ -65,22 +65,22 @@ public sealed class SmartDocsMemoryProvider : AIContextProvider
     /// </summary>
     /// <param name="store">The vector store memories are upserted into and recalled from (Ch 6 port).</param>
     /// <param name="embeddings">Embeds both the recall query and the facts being stored.</param>
-    /// <param name="summariser">Extracts durable facts from a completed turn. A deterministic fallback runs if it yields nothing usable.</param>
+    /// <param name="summarizer">Extracts durable facts from a completed turn. A deterministic fallback runs if it yields nothing usable.</param>
     /// <param name="recallTopK">How many memories to recall per turn.</param>
     public SmartDocsMemoryProvider(
         IVectorStore store,
         IEmbeddingService embeddings,
-        IChatClient summariser,
+        IChatClient summarizer,
         int recallTopK = 3)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(embeddings);
-        ArgumentNullException.ThrowIfNull(summariser);
+        ArgumentNullException.ThrowIfNull(summarizer);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(recallTopK);
 
         _store = store;
         _embeddings = embeddings;
-        _summariser = summariser;
+        _summarizer = summarizer;
         _recallTopK = recallTopK;
     }
 
@@ -195,7 +195,7 @@ public sealed class SmartDocsMemoryProvider : AIContextProvider
 
     /// <summary>
     /// Extracts one to three durable facts from a completed turn. Asks the
-    /// summariser first; if it returns nothing usable (e.g. an offline stub), falls
+    /// summarizer first; if it returns nothing usable (e.g. an offline stub), falls
     /// back to a deterministic single-fact capture so memory still accrues.
     /// </summary>
     private async Task<IReadOnlyList<string>> ExtractFactsAsync(
@@ -211,7 +211,7 @@ public sealed class SmartDocsMemoryProvider : AIContextProvider
         ChatResponse response;
         try
         {
-            response = await _summariser
+            response = await _summarizer
                 .GetResponseAsync([new ChatMessage(ChatRole.User, prompt)], options: null, cancellationToken)
                 .ConfigureAwait(false);
         }

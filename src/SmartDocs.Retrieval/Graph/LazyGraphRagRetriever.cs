@@ -99,7 +99,7 @@ public sealed class LazyGraphRagRetriever : IRetriever
                 (e.Properties.Count == 0 ? "" : " (" + string.Join("; ", e.Properties.Select(p => $"{p.Key}={p.Value}")) + ")")));
 
         var prompt =
-            $"Given the following subgraph, summarise it as a single concise paragraph " +
+            $"Given the following subgraph, summarize it as a single concise paragraph " +
             $"that would help answer the question. Reply with ONLY the summary.\n\n" +
             $"Question: {query}\n\nSubgraph:\n{subgraphText}";
 

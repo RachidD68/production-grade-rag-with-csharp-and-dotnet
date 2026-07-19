@@ -69,14 +69,14 @@ public static class SmartDocsMemoryRegistration
     public static AIContextProvider CreateSelfHosted(
         IVectorStore store,
         IEmbeddingService embeddings,
-        IChatClient summariser,
+        IChatClient summarizer,
         int recallTopK = 3)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(embeddings);
-        ArgumentNullException.ThrowIfNull(summariser);
+        ArgumentNullException.ThrowIfNull(summarizer);
 
-        return new SmartDocsMemoryProvider(store, embeddings, summariser, recallTopK);
+        return new SmartDocsMemoryProvider(store, embeddings, summarizer, recallTopK);
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public static class SmartDocsMemoryRegistration
         AgentSession session,
         IVectorStore store,
         IEmbeddingService embeddings,
-        IChatClient summariser,
+        IChatClient summarizer,
         HttpClient? httpClient = null)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -134,7 +134,7 @@ public static class SmartDocsMemoryRegistration
             case MemoryBackend.SelfHosted:
             default:
                 SmartDocsMemoryProvider.WithUserId(session, userId);
-                return CreateSelfHosted(store, embeddings, summariser, options.RecallTopK);
+                return CreateSelfHosted(store, embeddings, summarizer, options.RecallTopK);
         }
     }
 }
