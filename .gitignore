@@ -81,3 +81,6 @@ infra/data/
 
 # Bicep
 *.bicepparam.local
+
+# Concatenated source dumps generated for review tooling (regenerate as needed)
+*_Code.txt
