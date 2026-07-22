@@ -14,26 +14,26 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.13.0 stable (July 2026)">
+  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.14.0 stable (July 2026)">
     <!--
       Stable release line. Pin to the exact patch version below; the project
       bumps deliberately, not by floating on a range. Verify against the
       release notes when upgrading.
-      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.13.0
-      Bump rationale: docs/decisions/0013-maf-1.13.md (supersedes 0012)
+      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.14.0
+      Bump rationale: docs/decisions/0014-maf-1.14.md (supersedes 0013)
     -->
-    <PackageVersion Include="Microsoft.Agents.AI" Version="1.13.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.13.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.13.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.13.0" />
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.14.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.14.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.14.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.14.0" />
     <!-- Azure AI Foundry integration. This sub-package never left preview
-         (GA stops at 1.5.0); track the matching 1.13.0 preview so the Ch 6/14
+         (GA stops at 1.5.0); track the matching 1.14.0 preview so the Ch 6/14
          Foundry samples resolve a real version if enabled. No project
          references it today — the pin is here to keep the version coherent. -->
-    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.13.0-preview.260703.1" />
-    <!-- A2A remains preview at the 1.13.0 milestone — see ADR-0013. -->
-    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.13.0-preview.260703.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.13.0-preview.260703.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.14.0-preview.260721.1" />
+    <!-- A2A remains preview at the 1.14.0 milestone — see ADR-0014. -->
+    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.14.0-preview.260721.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.14.0-preview.260721.1" />
     <!-- Mem0 long-term memory provider (Ch 19). Ships on its OWN preview line
          (1.0.0-preview), NOT the 1.13.0 MAF core line — do not "bump" it to 1.13.0.
          Used for the optional managed-memory registration path beside the
