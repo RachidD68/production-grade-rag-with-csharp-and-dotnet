@@ -18,7 +18,7 @@ namespace SmartDocs.Agents;
 /// <list type="bullet">
 ///   <item><description>
 ///     <see cref="CreateWithRetrievedContext"/> attaches a framework-native
-///     MAF 1.10.0 <see cref="RetrievedChunksContextProvider"/>
+///     MAF <see cref="RetrievedChunksContextProvider"/>
 ///     (a <see cref="MessageAIContextProvider"/>) via
 ///     <see cref="ChatClientAgentOptions.AIContextProviders"/>. MAF prepends the
 ///     provider's messages to the request, so the chunks are loaded BEFORE the
@@ -78,7 +78,7 @@ public static class SmartDocsAgent
     /// AND a framework-native <see cref="RetrievedChunksContextProvider"/>
     /// attached via <see cref="ChatClientAgentOptions.AIContextProviders"/>. The
     /// provider pre-loads <paramref name="retrievedChunks"/> into the agent's
-    /// context before the first turn — the correct MAF 1.10.0 primitive for
+    /// context before the first turn — the correct MAF primitive for
     /// "load context up front" when retrieval ran upstream of the agent. The
     /// agent can still call its own tools if the pre-loaded context proves
     /// insufficient.

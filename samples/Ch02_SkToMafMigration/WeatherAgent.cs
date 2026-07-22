@@ -39,7 +39,7 @@ internal static class WeatherAgent
 
         var weatherTool = CreateGetWeatherTool();
 
-        // The MAF 1.10 ChatClientAgent constructor takes name / description /
+        // The MAF ChatClientAgent constructor takes name / description /
         // instructions / tools positionally — no plugin object, no
         // [KernelFunction] attribute on a method. The chat client itself is
         // the only required dependency.

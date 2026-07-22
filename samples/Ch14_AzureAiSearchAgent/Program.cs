@@ -1,6 +1,6 @@
-// Ch 14 — Azure AI Search RAG agent (MAF 1.10.0 reference pattern)
+// Ch 14 — Azure AI Search RAG agent (MAF 1.14.0 reference pattern)
 //
-// This sample mirrors the Microsoft Agent Framework 1.10.0 RAG reference: an
+// This sample mirrors the Microsoft Agent Framework RAG reference: an
 // Azure-hosted hybrid store fronted by a ChatClientAgent. We use a stand-in
 // IRetriever that returns canned chunks so the sample runs offline; the
 // production retriever is SmartDocs.Retrieval.Hybrid.AzureAiSearchHybridRetriever
@@ -130,7 +130,7 @@ sealed class CannedAzureSearchRetriever : IRetriever
                 DocumentId: "contoso-rag-arch",
                 ChunkIndex: 1,
                 Text:
-                    "Each query is wrapped in a ChatClientAgent (Microsoft Agent Framework 1.10.0). " +
+                    "Each query is wrapped in a ChatClientAgent (Microsoft Agent Framework). " +
                     "The agent calls the azure_search tool, receives chunk text plus IDs, and emits " +
                     "a final answer that preserves [Source N] markers for downstream grounding.",
                 StartCharOffset: 280,

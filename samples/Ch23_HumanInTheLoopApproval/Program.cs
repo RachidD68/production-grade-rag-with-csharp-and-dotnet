@@ -1,4 +1,4 @@
-// Ch 23 — Human-in-the-loop tool approval (MAF 1.10.0)
+// Ch 23 — Human-in-the-loop tool approval (MAF 1.14.0)
 //
 // Demonstrates the Microsoft Agent Framework human-in-the-loop approval flow for
 // a *state-changing* tool. Two tools are exposed:

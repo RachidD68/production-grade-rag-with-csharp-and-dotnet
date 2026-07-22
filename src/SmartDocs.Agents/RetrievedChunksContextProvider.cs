@@ -5,7 +5,7 @@ using SmartDocs.Core.Documents;
 namespace SmartDocs.Agents;
 
 /// <summary>
-/// A framework-native MAF 1.10.0 <see cref="MessageAIContextProvider"/> that
+/// A framework-native MAF <see cref="MessageAIContextProvider"/> that
 /// pre-loads retrieved <see cref="DocumentChunk"/> text into a
 /// <see cref="ChatClientAgent"/>'s context BEFORE the first user turn.
 ///

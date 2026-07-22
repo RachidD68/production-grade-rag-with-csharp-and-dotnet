@@ -9,7 +9,7 @@ namespace SmartDocs.UnitTests.Agents;
 
 /// <summary>
 /// Smoke test for the Chapter-19 multi-agent orchestration sample: the
-/// <see cref="Orchestration"/> graph builds with the real MAF 1.10 Workflows edge
+/// <see cref="Orchestration"/> graph builds with the real MAF Workflows edge
 /// API and runs one query end-to-end against the offline corpus, emitting the four
 /// agent-step events in order. Fully offline (FNV embedder + in-memory store +
 /// deterministic stub chat client).

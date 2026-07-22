@@ -1,6 +1,6 @@
 // Ch 15 — Loading retrieved context into an agent BEFORE the first turn
 //
-// Two ways to ground a MAF 1.10.0 ChatClientAgent in already-retrieved chunks,
+// Two ways to ground a MAF 1.14.0 ChatClientAgent in already-retrieved chunks,
 // both shown here against the offline stub chat client:
 //
 //   1. Framework-native: a RetrievedChunksContextProvider (a MAF
