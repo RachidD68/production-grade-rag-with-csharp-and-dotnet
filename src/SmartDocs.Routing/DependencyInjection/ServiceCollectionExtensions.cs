@@ -42,8 +42,16 @@ public static class ServiceCollectionExtensions
         // Additive registration: composes with any other IRetriever already
         // registered (dense, hybrid, ...). Resolve SelfQueryRetriever directly,
         // or enumerate IRetriever to pick by Strategy == "self-query".
-        services.AddSingleton<SelfQueryRetriever>();
-        services.AddSingleton<IRetriever>(sp => sp.GetRequiredService<SelfQueryRetriever>());
+        //
+        // SCOPED, not singleton: this retriever takes a SecurityContext, which
+        // the remarks above tell multi-tenant hosts to register per request. A
+        // singleton would capture the FIRST request's clearance and then serve
+        // every later user under it -- a cross-tenant authorization leak. Scoped
+        // keeps the retriever's lifetime no longer than the context it holds.
+        // (Both registrations must be scoped: a singleton IRetriever wrapping a
+        // scoped retriever re-introduces the same capture one level up.)
+        services.AddScoped<SelfQueryRetriever>();
+        services.AddScoped<IRetriever>(sp => sp.GetRequiredService<SelfQueryRetriever>());
 
         // Query routing (Ch 12). The concrete routers are registered so a host can
         // resolve a specific strategy, and a MultiSourceRouter (rule-first, with an
