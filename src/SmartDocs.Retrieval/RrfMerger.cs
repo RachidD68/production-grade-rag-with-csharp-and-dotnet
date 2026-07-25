@@ -19,7 +19,14 @@ public sealed class RrfMerger
         K = k;
     }
 
-    /// <summary>Fuse two result lists. Ties broken by the higher original score on the first list.</summary>
+    /// <summary>Fuse two result lists by reciprocal rank.</summary>
+    /// <remarks>
+    /// Only the fused RRF score decides the order — the inputs' original
+    /// similarity scores are not carried into the comparison, so equal fused
+    /// scores fall back to encounter order (first list first). An earlier
+    /// version of this comment promised a tie-break on the original score,
+    /// which the implementation has never done.
+    /// </remarks>
     public IReadOnlyList<RetrievalResult> Merge(
         IReadOnlyList<RetrievalResult> a,
         IReadOnlyList<RetrievalResult> b,

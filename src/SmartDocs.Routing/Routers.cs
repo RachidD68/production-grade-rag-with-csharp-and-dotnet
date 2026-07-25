@@ -137,7 +137,10 @@ public sealed class LlmClassifierRouter : IQueryRouter
             }
             return new RoutingDecision(
                 Silos: validSilos,
-                Confidence: parsed.Confidence,
+                // Clamp: the value is model-supplied and the record documents
+                // it as 0-1. Valid JSON with "confidence": 42 would otherwise
+                // flow into routing thresholds and telemetry unchecked.
+                Confidence: Math.Clamp(parsed.Confidence, 0.0, 1.0),
                 Reasoning: parsed.Reasoning ?? string.Empty,
                 Strategy: Strategy,
                 Escalated: true);

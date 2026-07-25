@@ -81,7 +81,10 @@ builder.Services.AddSingleton<IVectorStore>(sp =>
 {
     var store = new InMemoryVectorStore("smartdocs-api-demo");
     var embeddings = sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-    SeedAsync(store, embeddings).GetAwaiter().GetResult();
+    // Pass the configured model name so the seeded chunks record real
+    // provenance; this used to be the literal "ollama" regardless of provider.
+    var llm = sp.GetRequiredService<IOptions<LlmClientOptions>>().Value;
+    SeedAsync(store, embeddings, llm.EmbeddingModel).GetAwaiter().GetResult();
     return store;
 });
 // The retriever embeds the query through IEmbeddingService so it picks up the
@@ -240,7 +243,10 @@ static async IAsyncEnumerable<SseItem<string>> StreamSseAsync(
     }
 }
 
-static async Task SeedAsync(InMemoryVectorStore store, IEmbeddingGenerator<string, Embedding<float>> embeddings)
+static async Task SeedAsync(
+    InMemoryVectorStore store,
+    IEmbeddingGenerator<string, Embedding<float>> embeddings,
+    string embeddingModel)
 {
     string[] hrSnippets =
     [
@@ -257,7 +263,9 @@ static async Task SeedAsync(InMemoryVectorStore store, IEmbeddingGenerator<strin
     for (int i = 0; i < hrSnippets.Length; i++)
     {
         var chunk = new DocumentChunk($"hr-001#{i}", "hr-001", i, hrSnippets[i], 0, hrSnippets[i].Length, meta);
-        chunks.Add(new EmbeddedChunk(chunk, emb[i].Vector, "ollama"));
+        // Record the model actually configured, not a literal: an Azure OpenAI
+        // run was writing "ollama" as the embedding-model provenance.
+        chunks.Add(new EmbeddedChunk(chunk, emb[i].Vector, embeddingModel));
     }
     await store.UpsertAsync(chunks);
 }
