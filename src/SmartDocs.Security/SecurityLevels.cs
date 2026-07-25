@@ -12,11 +12,11 @@ public enum SecurityLevel
     /// <summary>Internal-only; visible to authenticated members of the org.</summary>
     Internal = 1,
 
-    /// <summary>Confidential; need-to-know within the org.</summary>
-    Confidential = 2,
+    /// <summary>Restricted; need-to-know within the org.</summary>
+    Restricted = 2,
 
-    /// <summary>Restricted; the most sensitive tier.</summary>
-    Restricted = 3,
+    /// <summary>Confidential; the most sensitive tier.</summary>
+    Confidential = 3,
 }
 
 /// <summary>
@@ -35,7 +35,7 @@ public static class SecurityLevels
 
     /// <summary>
     /// Maps a <c>DocumentMetadata.ConfidentialityLevel</c> string
-    /// (<c>Public</c> / <c>Internal</c> / <c>Confidential</c> / <c>Restricted</c>)
+    /// (<c>Public</c> / <c>Internal</c> / <c>Restricted</c> / <c>Confidential</c>)
     /// to a <see cref="SecurityLevel"/>. Unknown values map to the most
     /// restrictive level so an unclassified document is never over-shared.
     /// </summary>
@@ -46,9 +46,14 @@ public static class SecurityLevels
         {
             "public" => SecurityLevel.Public,
             "internal" => SecurityLevel.Internal,
-            "confidential" => SecurityLevel.Confidential,
             "restricted" => SecurityLevel.Restricted,
-            _ => SecurityLevel.Restricted,
+            "confidential" => SecurityLevel.Confidential,
+            // Fail closed: the most sensitive tier is Confidential, so an
+            // unclassified document is treated as Confidential, not merely
+            // Restricted. (Before the ladder was reconciled with
+            // SecurityContext.Levels, this line said Restricted — which under
+            // the corrected ordering would have UNDER-classified the document.)
+            _ => SecurityLevel.Confidential,
         };
     }
 }
