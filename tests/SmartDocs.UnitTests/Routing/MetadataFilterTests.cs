@@ -36,6 +36,80 @@ public sealed class MetadataFilterTests
         Assert.True(MetadataFilter.All.Matches(Meta()));
     }
 
+    // The tests above prove .And()/.Or() work through Matches() -- the in-memory
+    // compiled delegate. The Qdrant path is a different code route (it walks the
+    // expression TREE), and because And/Or compose via Expression.Invoke, every
+    // composed filter used to throw NotSupportedException there. Nothing caught
+    // it because no test compiled a composed filter. These do.
+
+    [Fact]
+    public void Qdrant_compiler_handles_And_composed_filters()
+    {
+        var combined = MetadataFilter
+            .Where(m => m.Office == "Paris")
+            .And(MetadataFilter.Where(m => m.ConfidentialityLevel == "Public"));
+
+        var json = QdrantFilterCompiler.Compile(combined);
+
+        Assert.Contains("\"must\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"key\":\"office\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"value\":\"Paris\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"key\":\"confidentiality\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"value\":\"Public\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Qdrant_grpc_builder_handles_And_composed_filters()
+    {
+        var combined = MetadataFilter
+            .Where(m => m.Department == "HR")
+            .And(MetadataFilter.Where(m => m.FiscalYear == 2026));
+
+        // The gRPC builder is the path QdrantVectorStore actually uses.
+        var grpc = QdrantFilterCompiler.ToGrpcFilter(combined);
+
+        Assert.Equal(2, grpc.Must.Count);
+    }
+
+    [Fact]
+    public void Qdrant_compiler_handles_Or_composed_filters()
+    {
+        var either = MetadataFilter
+            .Where(m => m.Office == "Paris")
+            .Or(MetadataFilter.Where(m => m.Office == "London"));
+
+        var json = QdrantFilterCompiler.Compile(either);
+
+        Assert.Contains("\"should\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"value\":\"Paris\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"value\":\"London\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Qdrant_compiler_handles_a_three_way_composition()
+    {
+        // A security scope ANDed with two query constraints -- the shape
+        // SelfQueryRetriever builds on every filtered search.
+        var filter = MetadataFilter
+            .Where(m => m.Silo == "hr-policies")
+            .And(MetadataFilter.Where(m => m.Office == "Paris"))
+            .And(MetadataFilter.Where(m => m.FiscalYear == 2026));
+
+        var grpc = QdrantFilterCompiler.ToGrpcFilter(filter);
+
+        Assert.Equal(3, grpc.Must.Count);
+    }
+
+    [Fact]
+    public void Qdrant_compiler_treats_All_as_an_unconstrained_filter()
+    {
+        // MetadataFilter.All is `_ => true` -- a bare constant body, which the
+        // node switch also could not read.
+        var grpc = QdrantFilterCompiler.ToGrpcFilter(MetadataFilter.All);
+
+        Assert.Empty(grpc.Must);
+    }
+
     [Fact]
     public void Qdrant_compiler_emits_must_array_for_AndAlso_chain()
     {

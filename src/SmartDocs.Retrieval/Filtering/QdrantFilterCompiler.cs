@@ -154,8 +154,24 @@ public sealed class QdrantFilterCompiler
 
     private static Clause BuildClause(Expression node, ParameterExpression param)
     {
+        // MetadataFilter.And/.Or compose by wrapping each side in an
+        // InvocationExpression -- AndAlso(Invoke(p1, p), Invoke(p2, p)) -- so a
+        // composed filter reaches this switch as Invoke nodes it cannot read.
+        // Inline them first (substituting our parameter for the inner lambda's)
+        // and the rest of the compiler sees the ordinary tree it expects.
+        node = InvocationInliner.Inline(node, param);
+
         switch (node.NodeType)
         {
+            // MetadataFilter.All is `_ => true`: a bare constant body, not a
+            // comparison. It means "no constraint", which is an empty must list.
+            case ExpressionType.Constant when node is ConstantExpression { Value: bool b }:
+                return b
+                    ? new AndClause([])
+                    : throw new NotSupportedException(
+                        "A constantly-false filter matches nothing; " +
+                        "omit the search instead of compiling it.");
+
             case ExpressionType.AndAlso:
                 {
                     var bin = (BinaryExpression)node;
@@ -184,6 +200,52 @@ public sealed class QdrantFilterCompiler
 
         throw new NotSupportedException(
             $"Unsupported expression node {node.NodeType}: {node}. {SupportedNodes}");
+    }
+
+    /// <summary>
+    /// Rewrites <c>Invoke(lambda, arg)</c> nodes into the lambda's body with its
+    /// parameters replaced by the outer predicate's parameter.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="MetadataFilter.And"/> and <see cref="MetadataFilter.Or"/> build
+    /// their combined predicate as
+    /// <c>AndAlso(Invoke(left, p), Invoke(right, p))</c>. Without this pass the
+    /// compiler's node switch hits an <c>Invoke</c> it does not handle and throws
+    /// <see cref="NotSupportedException"/> — which meant every composed filter
+    /// (including every security scope, since <c>SecurityContext.ToFilter</c>
+    /// composes with <c>.And()</c>) failed against Qdrant.
+    /// </remarks>
+    private sealed class InvocationInliner(ParameterExpression target) : ExpressionVisitor
+    {
+        private readonly Dictionary<ParameterExpression, Expression> _substitutions = [];
+
+        public static Expression Inline(Expression node, ParameterExpression target)
+            => new InvocationInliner(target).Visit(node);
+
+        protected override Expression VisitInvocation(InvocationExpression node)
+        {
+            // Only inline when the invocation target is a lambda we can see
+            // through; anything else (a compiled delegate in a variable, say)
+            // is left alone so the node switch reports it honestly.
+            if (node.Expression is not LambdaExpression lambda)
+            {
+                return base.VisitInvocation(node);
+            }
+
+            for (var i = 0; i < lambda.Parameters.Count; i++)
+            {
+                // Arguments to these invocations are the outer parameter itself;
+                // map the inner lambda's parameter onto our target so the leaf
+                // builders see a single consistent parameter.
+                _substitutions[lambda.Parameters[i]] =
+                    i < node.Arguments.Count ? Visit(node.Arguments[i]) : target;
+            }
+
+            return Visit(lambda.Body);
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+            => _substitutions.TryGetValue(node, out var replacement) ? replacement : node;
     }
 
     /// <summary>Collapse a chain of same-operator binaries into a flat clause list.</summary>
