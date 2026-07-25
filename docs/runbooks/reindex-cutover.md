@@ -7,7 +7,7 @@ A new embedding model means every stored vector is in a different space. You can
 ## Pre-flight
 
 - Confirm the new model is pinned to an explicit version in the Azure OpenAI deployment (no floating alias) — see `faithfulness-degraded.md` for why.
-- Confirm the eval baseline (Chapter 20, `eval/baseline.json`) is current for the live index — it is the gate the shadow index must pass.
+- Confirm the eval baseline (Chapter 20, `eval-baseline.json`) is current for the live index — it is the gate the shadow index must pass.
 - Capture the live collection's point count so you can verify the backfill is complete.
 
 ```bash
@@ -67,7 +67,7 @@ This is the cutover gate. Run the offline eval (Chapter 20) against the shadow i
 ```bash
 dotnet run --project tools/eval-runner -- --gate \
   --index smartdocs-next \
-  --baseline eval/baseline.json \
+  --baseline eval-baseline.json \
   --recall-threshold 0.02 --faithfulness-threshold 0.03
 ```
 

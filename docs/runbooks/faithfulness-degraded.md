@@ -59,7 +59,7 @@ az cognitiveservices account deployment list \
 
 1. **Pin the model version.** Move the Azure OpenAI deployment off any floating alias to an explicit, known-good model version so behaviour stops moving under you.
 2. **Check for a silent provider update** in the deployment history; if a roll happened, pin back to the prior version and re-measure.
-3. **Tie the decision to the eval baseline (Chapter 20).** Run the eval gate against `eval/baseline.json`; if the candidate (current prod) regresses past the allowed delta, that is your evidence — do not let a worse configuration stay live.
+3. **Tie the decision to the eval baseline (Chapter 20).** Run the eval gate against `eval-baseline.json`; if the candidate (current prod) regresses past the allowed delta, that is your evidence — do not let a worse configuration stay live.
 4. **Engage the eval/quality team** to triage whether this is a real regression or sampling bias, and to decide whether to roll back the model/prompt or re-baseline.
 5. If a recent prompt/reranker/index change is the cause, revert it and confirm the rolling metric recovers.
 

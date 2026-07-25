@@ -4,7 +4,7 @@ The list is the production-readiness contract; 12-of-13 is not ready.
 
 Before declaring the system production-ready, every item below must pass. Each is a gate, not a guideline — ship with the gap filled, not around it.
 
-- [ ] **Eval baseline locked** — `eval/baseline.json` committed; CI gate fires on regression.
+- [ ] **Eval baseline locked** — `eval-baseline.json` committed; CI gate fires on regression.
 - [ ] **Red-team suite green** — all 25 cases pass on the deployed environment.
 - [ ] **Faithfulness sampler running** — production sampler emitting daily metrics for 7 days.
 - [ ] **Audit log writing** — verified by `audit-trace` on a fresh production query.
