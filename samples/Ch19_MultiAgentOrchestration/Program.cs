@@ -1,4 +1,4 @@
-// Ch 19 — Multi-agent orchestration with the MAF Workflows graph API (1.10.0)
+// Ch 19 — Multi-agent orchestration with the MAF Workflows graph API (1.14.0)
 //
 // A Researcher → Analyst → FactChecker → Writer graph, wired with the real
 // WorkflowBuilder edge API and AI-agents-as-executors, run end-to-end against an

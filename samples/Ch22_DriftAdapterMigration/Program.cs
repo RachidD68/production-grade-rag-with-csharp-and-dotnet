@@ -7,9 +7,9 @@
 // embedded with the new model, so they no longer line up with the old index.
 //
 // We train a DriftAdapter on a handful of (old, new) vector pairs — a real
-// Orthogonal-Procrustes solve via MathNet.Numerics — and apply it to the old
-// index vectors at query time, lifting them into the new model's space without
-// re-embedding the corpus. The recall table shows recall@1 recovering from the
+// Orthogonal-Procrustes solve via MathNet.Numerics — and apply it once, at
+// migration time, to the old index vectors, lifting them into the new model's
+// space without re-embedding the corpus. The recall table shows recall@1 recovering from the
 // un-adapted baseline toward the full-re-embed ceiling.
 //
 // Deterministic and offline: both embedders are stable FNV-1a bag-of-words stubs,

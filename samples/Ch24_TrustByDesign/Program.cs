@@ -12,7 +12,10 @@
 //      proving each cited chunk's provenance signature.
 //   6. Render and sign the live model card.
 //
-// Runs fully offline (stub IChatClient + InMemoryVectorStore) and exits 0.
+// Runs fully offline and exits 0. There is no chat client here: retrieval is real
+// (InMemoryVectorStore + a deterministic toy embedder) but the answers are canned
+// strings passed in alongside each query, so the compliance flow can be exercised
+// without a model call.
 //
 // Run:
 //   dotnet run --project samples/Ch24_TrustByDesign

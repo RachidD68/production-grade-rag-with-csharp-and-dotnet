@@ -4,9 +4,9 @@ namespace SmartDocs.Operations;
 
 /// <summary>
 /// Drift-Adapter (Ch 22) — learns the optimal rigid rotation that maps an old
-/// embedding model's space onto a new model's space, then applies it at query
-/// time so an existing index can keep its old vectors instead of being fully
-/// re-embedded.
+/// embedding model's space onto a new model's space, then applies it once, at
+/// migration time, to the stored old vectors so an existing index can be lifted
+/// into the new space instead of being fully re-embedded.
 ///
 /// <para>
 /// This is a real <strong>Orthogonal Procrustes</strong> solve (no longer the
@@ -21,7 +21,7 @@ namespace SmartDocs.Operations;
 ///   <item><description>The optimal rotation is <c>R = U·Vᵀ</c> (the closed-form Procrustes solution).</description></item>
 /// </list>
 /// <para>
-/// <see cref="Apply"/> multiplies a query vector by <c>R</c> and re-normalizes the
+/// <see cref="Apply"/> multiplies an old-space vector by <c>R</c> and re-normalizes the
 /// result to unit length, because cosine similarity assumes unit vectors (Ch 22
 /// §6). The map is a same-dimension rotation: it cannot up-project a smaller old
 /// space into a larger new one, so a dimension change (e.g. 1536 → 3072) must be
@@ -93,11 +93,14 @@ public sealed class DriftAdapter
     }
 
     /// <summary>
-    /// Apply the trained rotation to a new query vector and re-normalize the result
-    /// to unit length (cosine similarity assumes unit vectors).
+    /// Apply the trained rotation to a vector from the <em>old</em> model's space and
+    /// re-normalize the result to unit length (cosine similarity assumes unit vectors).
     /// </summary>
-    /// <param name="queryVector">The query embedding to rotate into the old space.</param>
-    /// <returns>The rotated, unit-normalized vector.</returns>
+    /// <param name="queryVector">
+    /// The old-model embedding to rotate into the new model's space — typically a stored
+    /// index vector, adapted once at migration time.
+    /// </param>
+    /// <returns>The rotated, unit-normalized vector, in the new model's space.</returns>
     /// <exception cref="InvalidOperationException">Thrown if <see cref="Train"/> has not run.</exception>
     /// <exception cref="ArgumentException">Thrown if the query dimension differs from the trained dimension.</exception>
     public float[] Apply(ReadOnlyMemory<float> queryVector)

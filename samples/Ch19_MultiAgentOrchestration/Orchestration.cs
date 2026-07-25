@@ -7,7 +7,7 @@ namespace RagInDotNet.Samples.Ch19_MultiAgentOrchestration;
 
 /// <summary>
 /// Builds and runs the Chapter-19 multi-agent research graph with MAF Workflows
-/// 1.10.0: Researcher → Analyst → FactChecker → Writer, wired as a typed graph of
+/// 1.14.0: Researcher → Analyst → FactChecker → Writer, wired as a typed graph of
 /// agents-as-executors. The four agents reuse the same specialist instructions as
 /// <c>SmartDocs.Agents.MultiAgentWorkflow</c>; here the framework owns the topology
 /// (an explicit graph) rather than an LLM manager.

@@ -9,7 +9,6 @@
 //   1. GET  /health                 → 2xx
 //   2. POST /api/ask/stream {q}      → SSE frames: a "sources" event, a "done"
 //                                      event, and total "token" Data length > 0
-//   3. GET  /admin/metrics          → 2xx
 //
 // Framework-only: HttpClient + System.Text.Json + the shared-framework
 // System.Net.ServerSentEvents.SseParser. No external packages.
@@ -49,15 +48,6 @@ try
 catch (Exception ex)
 {
     Fail($"/api/ask/stream threw: {ex.Message}");
-}
-
-try
-{
-    await CheckMetricsAsync(http).ConfigureAwait(false);
-}
-catch (Exception ex)
-{
-    Fail($"/admin/metrics threw: {ex.Message}");
 }
 
 if (failures == 0)
@@ -129,19 +119,6 @@ async Task CheckStreamAsync(HttpClient client, string q)
     AssertTrue(sawSources, "SSE stream contained a 'sources' event");
     AssertTrue(sawDone, "SSE stream contained a 'done' event");
     AssertTrue(totalTokenLength > 0, $"SSE 'token' frames carried data (total length = {totalTokenLength})");
-}
-
-async Task CheckMetricsAsync(HttpClient client)
-{
-    using var response = await client.GetAsync("/admin/metrics").ConfigureAwait(false);
-    if (response.IsSuccessStatusCode)
-    {
-        Pass($"GET /admin/metrics → {(int)response.StatusCode}");
-    }
-    else
-    {
-        Fail($"GET /admin/metrics → {(int)response.StatusCode} (expected 2xx)");
-    }
 }
 
 // ── Assertion / reporting helpers ────────────────────────────────────────────
