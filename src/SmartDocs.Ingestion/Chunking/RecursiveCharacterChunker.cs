@@ -6,9 +6,15 @@ namespace SmartDocs.Ingestion.Chunking;
 /// <summary>
 /// Splits text by walking a hierarchy of separators ("\n\n", "\n", ". ", " ")
 /// — markdown-aware: section boundaries first, paragraphs second, sentences
-/// third, words last. Re-merges adjacent splits until each piece fits the
-/// configured <see cref="MaxChunkSize"/>.
+/// third, words last. Descends to the next separator only for pieces that still
+/// exceed <see cref="MaxChunkSize"/>.
 /// </summary>
+/// <remarks>
+/// Pieces are never re-merged: a short section stays its own chunk even when it
+/// would fit alongside the next one, so a 200-character budget over a document
+/// of small sections yields several well-under-budget chunks. Whitespace-only
+/// pieces are dropped rather than emitted as empty chunks.
+/// </remarks>
 public sealed class RecursiveCharacterChunker : IChunker
 {
     public int MaxChunkSize { get; }
@@ -40,7 +46,21 @@ public sealed class RecursiveCharacterChunker : IChunker
         foreach (var (start, end) in Split(text, 0, text.Length, separatorIndex: 0))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            yield return ChunkBuilder.Build(document, index++, start, end, text[start..end].Trim());
+
+            // Split only guarantees a non-zero RAW span, so a piece made up of
+            // separator characters ("\n\n", "   ") survives it and then trims to
+            // nothing. Emitting that produces an empty chunk, which downstream
+            // assumes cannot happen: EmbeddingService documents non-blank input,
+            // and an empty string embeds to a meaningless vector that still
+            // occupies a row and can be returned by a search.
+            // SentenceChunker has always had this guard; this one did not.
+            var body = text[start..end].Trim();
+            if (body.Length == 0)
+            {
+                continue;
+            }
+
+            yield return ChunkBuilder.Build(document, index++, start, end, body);
         }
     }
 

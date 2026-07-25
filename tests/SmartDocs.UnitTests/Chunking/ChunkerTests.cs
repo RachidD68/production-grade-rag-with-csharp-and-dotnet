@@ -42,6 +42,23 @@ public sealed class ChunkerTests
     }
 
     [Fact]
+    public async Task RecursiveCharacterChunker_never_emits_blank_chunks()
+    {
+        // Blank lines and a heading marker produce raw spans that are non-empty
+        // before Trim() and empty after it. Chapter 3 states outright that the
+        // chunkers never emit empties, and EmbeddingService relies on it.
+        var chunker = new RecursiveCharacterChunker(maxChunkSize: 40);
+        var doc = Doc("## Leave\n\n\nStaff accrue leave monthly.\n\n   \n\n## Sick\n\nNotify your manager.");
+
+        var chunks = await ToListAsync(chunker.ChunkAsync(doc));
+
+        Assert.NotEmpty(chunks);
+        Assert.All(chunks, c => Assert.False(
+            string.IsNullOrWhiteSpace(c.Text),
+            $"blank chunk emitted at index {c.ChunkIndex}"));
+    }
+
+    [Fact]
     public async Task RecursiveCharacterChunker_prefers_paragraph_breaks()
     {
         var chunker = new RecursiveCharacterChunker(maxChunkSize: 50);
