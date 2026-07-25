@@ -85,7 +85,7 @@ public sealed class InstrumentedRouter : IQueryRouter
                 strategyTag);
         }
 
-        if (IsEscalation(decision.Strategy))
+        if (decision.Escalated)
         {
             _metrics.LlmEscalations.Add(1, strategyTag);
         }
@@ -93,11 +93,14 @@ public sealed class InstrumentedRouter : IQueryRouter
         return decision;
     }
 
-    // The inner strategy string carries the routing method; "llm-classifier" and
-    // "semantic" (embedding) both count as escalations beyond cheap rules. The
-    // MultiSourceRouter composes these names, so a substring match catches the
-    // composite "multi(rule-based+llm-classifier)" form too.
-    private static bool IsEscalation(string strategy) =>
-        strategy.Contains("llm-classifier", StringComparison.Ordinal) ||
-        strategy.Contains("semantic", StringComparison.Ordinal);
+    // Escalation is read from RoutingDecision.Escalated, which the router that
+    // made the call sets from control flow.
+    //
+    // It used to be inferred by substring-matching the strategy name for
+    // "llm-classifier" / "semantic". That was wrong: MultiSourceRouter stamps
+    // its composite name -- multi(rule-based+llm-classifier) -- on rule-based
+    // SHORT-CIRCUITS as well as on real escalations, so the match succeeded on
+    // every decision and the counter reported ~100% escalation no matter how
+    // much traffic the cheap rung actually absorbed. Exactly the number the
+    // metric exists to disprove.
 }

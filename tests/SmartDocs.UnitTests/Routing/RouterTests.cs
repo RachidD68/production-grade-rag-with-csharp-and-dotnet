@@ -128,6 +128,12 @@ public sealed partial class RouterTests
 
         Assert.Equal("multi(rule-based+llm-classifier)", decision.Strategy);
         Assert.Contains("hr-policies", decision.Silos);
+
+        // The composite Strategy name mentions "llm-classifier" even though no
+        // LLM was called. Escalated is what the cost metric counts, and it must
+        // stay false here -- inferring escalation from the name reported ~100%
+        // escalation on traffic the cheap rung actually absorbed.
+        Assert.False(decision.Escalated);
     }
 
     [Fact]
@@ -141,6 +147,31 @@ public sealed partial class RouterTests
         var decision = await router.RouteAsync("compare the offerings"); // No rule keywords.
 
         Assert.Contains("product-catalog", decision.Silos);
+
+        // This one really did pay for the LLM rung.
+        Assert.True(decision.Escalated);
+    }
+
+    [Fact]
+    public async Task RuleBasedRouter_alone_never_reports_an_escalation()
+    {
+        var decision = await new RuleBasedRouter()
+            .RouteAsync("vacation policy remote work parental leave");
+
+        Assert.False(decision.Escalated);
+    }
+
+    [Fact]
+    public async Task LlmClassifierRouter_alone_always_reports_an_escalation()
+    {
+        // Wired standalone, every query pays for an LLM call -- so 100% here is
+        // the correct reading, not the bug the composite name used to produce.
+        var router = new LlmClassifierRouter(new StubChatClient(_ =>
+            "{ \"silos\": [\"hr-policies\"], \"confidence\": 0.9, \"reasoning\": \"x\" }"));
+
+        var decision = await router.RouteAsync("anything");
+
+        Assert.True(decision.Escalated);
     }
 
     [Fact]

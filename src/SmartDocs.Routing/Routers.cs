@@ -132,18 +132,21 @@ public sealed class LlmClassifierRouter : IQueryRouter
                     Silos: Array.Empty<string>(),
                     Confidence: 0,
                     Reasoning: "no valid silos",
-                    Strategy: Strategy);
+                    Strategy: Strategy,
+                    Escalated: true);
             }
             return new RoutingDecision(
                 Silos: validSilos,
                 Confidence: parsed.Confidence,
                 Reasoning: parsed.Reasoning ?? string.Empty,
-                Strategy: Strategy);
+                Strategy: Strategy,
+                Escalated: true);
         }
         catch (JsonException)
         {
+            // The call was still made and still billed, so it counts.
             return new RoutingDecision(Array.Empty<string>(), 0,
-                "failed to parse LLM response", Strategy);
+                "failed to parse LLM response", Strategy, Escalated: true);
         }
     }
 
@@ -266,7 +269,8 @@ public sealed class SemanticRouter : IQueryRouter
             Silos: selected,
             Confidence: confidence,
             Reasoning: reasoning,
-            Strategy: Strategy);
+            Strategy: Strategy,
+            Escalated: true);
     }
 
     private async Task<FrozenDictionary<string, ReadOnlyMemory<float>[]>> EmbedExemplarsAsync()
@@ -313,7 +317,9 @@ public sealed class MultiSourceRouter : IQueryRouter
         var ruleDecision = await _ruleBased.RouteAsync(query, cancellationToken).ConfigureAwait(false);
         if (ruleDecision.Confidence >= ConfidenceThreshold)
         {
-            return ruleDecision with { Strategy = Strategy };
+            // Answered by cheap rules alone -- no LLM, no embedding. Escalated
+            // stays false even though Strategy names the composite.
+            return ruleDecision with { Strategy = Strategy, Escalated = false };
         }
         var fallback = await _llmFallback.RouteAsync(query, cancellationToken).ConfigureAwait(false);
         var union = ruleDecision.Silos.Union(fallback.Silos, StringComparer.Ordinal).ToArray();
@@ -321,6 +327,7 @@ public sealed class MultiSourceRouter : IQueryRouter
             Silos: union,
             Confidence: Math.Max(ruleDecision.Confidence, fallback.Confidence),
             Reasoning: $"rule={ruleDecision.Reasoning}; fallback={fallback.Reasoning}",
-            Strategy: Strategy);
+            Strategy: Strategy,
+            Escalated: true);
     }
 }
