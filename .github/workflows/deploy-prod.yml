@@ -73,21 +73,21 @@ jobs:
         run: dotnet pack -c Release -o packages
 
       - name: Upload API artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: api
           path: publish/api
           if-no-files-found: error
 
       - name: Upload MCP artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mcp
           path: publish/mcp
           if-no-files-found: error
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages
           path: packages
