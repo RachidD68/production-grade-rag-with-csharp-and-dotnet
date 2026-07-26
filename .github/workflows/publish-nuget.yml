@@ -42,6 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: nuget-release
 
+    # `secrets` is NOT a valid context inside a step-level `if:` — using it there
+    # makes GitHub reject the whole file ("workflow file issue"), so the workflow
+    # never runs at all, not even on a release. Job-level `env` DOES accept
+    # `secrets`, so the optional cert is surfaced here and the signing steps
+    # branch on `env` instead.
+    env:
+      NUGET_SIGN_CERT_BASE64: ${{ secrets.NUGET_SIGN_CERT_BASE64 }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -119,9 +127,8 @@ jobs:
       # the workflow does not fail for forks/contributors.
       # ---------------------------------------------------------------------
       - name: Sign packages (optional)
-        if: ${{ secrets.NUGET_SIGN_CERT_BASE64 != '' }}
+        if: env.NUGET_SIGN_CERT_BASE64 != ''
         env:
-          NUGET_SIGN_CERT_BASE64: ${{ secrets.NUGET_SIGN_CERT_BASE64 }}
           NUGET_SIGN_CERT_PASSWORD: ${{ secrets.NUGET_SIGN_CERT_PASSWORD }}
         run: |
           echo "$NUGET_SIGN_CERT_BASE64" | base64 --decode > ${{ runner.temp }}/sign-cert.pfx
@@ -133,7 +140,7 @@ jobs:
           done
 
       - name: Skip-signing notice
-        if: ${{ secrets.NUGET_SIGN_CERT_BASE64 == '' }}
+        if: env.NUGET_SIGN_CERT_BASE64 == ''
         run: echo "::notice::NUGET_SIGN_CERT_BASE64 not set — publishing unsigned packages."
 
       - name: Push to nuget.org (.nupkg + .snupkg)

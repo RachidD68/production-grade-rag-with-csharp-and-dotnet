@@ -12,6 +12,24 @@ name: deploy-prod
 #
 # The two deploy jobs are mutually exclusive: exactly one runs per pipeline,
 # selected by `github.event_name` and the dispatch `target` input.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# EXPECTED TO FAIL IN THIS REPOSITORY.
+#
+# This is the book's reference pipeline (Chapter 25), published so readers can
+# read it. It is NOT wired to a live Azure subscription: the repo has no Azure
+# credentials, so `azure/login` has nothing to authenticate with and the deploy
+# jobs fail on every push to main.
+#
+# That failure is configuration, not a defect — the workflow is exactly what
+# Chapter 25 describes. To make it green, either point it at your own Azure
+# subscription (federated OIDC credential + the `AZURE_CLIENT_ID`,
+# `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` variables, plus `prod`/`staging`
+# GitHub Environments), or drop the `push:` trigger below so it only ever runs
+# on manual dispatch.
+#
+# `ci` is the workflow that actually gates this repository, and it is green.
+# ─────────────────────────────────────────────────────────────────────────────
 
 on:
   workflow_dispatch:

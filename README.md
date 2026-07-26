@@ -147,6 +147,22 @@ Embedding dimensions differ between providers (`nomic-embed-text` is 768, `text-
 | `deploy/` | 25 | Bicep templates, prod deployment and NuGet publish workflows |
 | `docs/` | — | Local setup, architecture, ADRs, runbooks, preflight checklist |
 
+## A note on the workflow badges
+
+`ci` — build, test and format across Ubuntu and Windows — is the workflow that gates this
+repository, and it is green.
+
+**`deploy-prod` fails here, on purpose-ish.** It is the reference deployment pipeline from
+Chapter 25, published so you can read it. It is not connected to a live Azure subscription:
+this repository holds no Azure credentials, so `azure/login` has nothing to authenticate with
+and the deploy jobs fail on every push to `main`. That is a configuration gap, not a broken
+pipeline — the workflow is exactly what the chapter describes. Point it at your own
+subscription (a federated OIDC credential plus `prod`/`staging` GitHub Environments) and it
+runs as written.
+
+`publish-nuget` only fires when a GitHub Release is published, which is the deliberate,
+human-gated step that ships the packages.
+
 ## Errata & feedback
 
 Spotted a typo, a code sample that won't compile, or an outdated API? Please open an [**errata report**](../../issues/new?template=errata.yml). Reader corrections are how the book gets better.
