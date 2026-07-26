@@ -156,7 +156,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download API artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api
           path: publish/api
@@ -225,7 +225,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download API artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api
           path: publish/api
