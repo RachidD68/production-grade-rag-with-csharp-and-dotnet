@@ -22,10 +22,10 @@
       Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.14.0
       Bump rationale: docs/decisions/0014-maf-1.14.md (supersedes 0013)
     -->
-    <PackageVersion Include="Microsoft.Agents.AI" Version="1.14.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.14.0" />
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.15.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.15.0" />
     <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.14.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.14.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.15.0" />
     <!-- Azure AI Foundry integration. This sub-package never left preview
          (GA stops at 1.5.0); track the matching 1.14.0 preview so the Ch 6/14
          Foundry samples resolve a real version if enabled. No project
