@@ -1,6 +1,6 @@
-// Ch 20 — Ground-truth evaluation, the framework-native way (MAF 1.14).
+// Ch 20 — Ground-truth evaluation, the framework-native way (MAF 1.16).
 //
-// The Microsoft Agent Framework (available in MAF 1.14, introduced earlier in
+// The Microsoft Agent Framework (available in MAF 1.16, introduced earlier in
 // the 1.x line) ships a real evaluation framework in the Microsoft.Agents.AI
 // namespace: EvalItem (a query + the agent's response + an optional
 // ExpectedOutput), reusable EvalChecks, FunctionEvaluator.Create(...) for your
