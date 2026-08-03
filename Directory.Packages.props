@@ -49,7 +49,7 @@
 
   <ItemGroup Label="Microsoft.Extensions.AI — unified IChatClient / IEmbeddingGenerator">
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.8.3" />
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
   </ItemGroup>
 
@@ -58,8 +58,8 @@
          and NLP are preview-only on that line (user-approved). Some evaluators
          (RTC, etc.) are gated behind the AIEVAL001 experimental diagnostic — the
          eval sample projects add <NoWarn>$(NoWarn);AIEVAL001</NoWarn>. -->
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.7.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.8.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Safety" Version="10.7.0-preview.1.26309.5" />
     <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.7.0-preview.1.26309.5" />
@@ -94,18 +94,18 @@
   <ItemGroup Label="Microsoft.Extensions.* — hosting, configuration, DI, resilience">
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
