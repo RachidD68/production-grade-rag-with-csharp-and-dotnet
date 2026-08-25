@@ -191,7 +191,7 @@
          GHSA-v5pm-xwqc-g5wc (NU1903 high-severity, affects 2.0.0-preview.11..2.7.4,
          fixed in 2.7.5). Auto-applied via CentralPackageTransitivePinningEnabled. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
     <!-- JWT bearer auth for the Ch 18 Streamable-HTTP MCP host (OAuth 2.0
          resource-server model): MapMcp().RequireAuthorization() over a JWT.
          Microsoft.IdentityModel.* / System.IdentityModel.Tokens.Jwt come in
