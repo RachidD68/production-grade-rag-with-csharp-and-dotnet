@@ -186,7 +186,7 @@
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core 10 — first-class OpenAPI 3.1 (no Swashbuckle needed)">
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <!-- Transitive of AspNetCore.OpenApi 10.0.9; pinned to 2.7.5 to clear
          GHSA-v5pm-xwqc-g5wc (NU1903 high-severity, affects 2.0.0-preview.11..2.7.4,
          fixed in 2.7.5). Auto-applied via CentralPackageTransitivePinningEnabled. -->
