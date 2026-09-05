@@ -184,9 +184,13 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
   </ItemGroup>
 
-  <ItemGroup Label="Model Context Protocol (MCP)">
-    <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
-    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+  <ItemGroup Label="Model Context Protocol (MCP) — spec 2026-07-28, C# SDK 2.x">
+    <!-- 2.x is stateless-by-default (no initialize handshake, no Mcp-Session-Id).
+         Requires Microsoft.Extensions.AI.Abstractions >= 10.8.3 — satisfied by the
+         10.9.0 pins above. Bump rationale: docs/decisions/0016-maf-1.20.md -->
+    <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageVersion Include="ModelContextProtocol.Core" Version="2.2.0" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="CLI tooling">

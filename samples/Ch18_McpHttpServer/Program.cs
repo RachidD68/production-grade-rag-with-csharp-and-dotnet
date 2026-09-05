@@ -9,9 +9,12 @@
 //     endpoint requires an authenticated principal: MapMcp().RequireAuthorization().
 //   * Tenant scope — derived per request from the ClaimsPrincipal
 //     (ClaimsTenantContext), not a fixed dev default.
-//   * Transport — WithHttpTransport(o => o.Stateless = true). Stateless is the
-//     recommended default; set it false only when you need sampling / elicitation
-//     / subscriptions (those require a stateful session).
+//   * Transport — WithHttpTransport(o => o.SessionMode = HttpServerSessionMode.Stateless).
+//     Stateless is the spec default since MCP 2026-07-28 (no Mcp-Session-Id, no
+//     standalone GET stream). Switch to Stateful only when the server must push
+//     list-changed / resource-updated notifications over a subscriptions/listen
+//     stream; StatefulForInitializeClients keeps a session only for clients that
+//     still speak the pre-2026 initialize handshake.
 //
 // MapMcp() is the line the chapter's listing omits — without it there is no
 // /mcp endpoint to route requests to.
@@ -22,6 +25,7 @@
 // OAuth authorization server.
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using ModelContextProtocol.AspNetCore;
 using RagInDotNet.Samples.Ch18_McpHttpServer;
 using RagInDotNet.Samples.Ch18_McpServer; // shared offline pipeline (linked)
 using SmartDocs.Mcp;
@@ -48,7 +52,7 @@ builder.Services.AddAuthorization();
 
 builder.Services
     .AddMcpServer()
-    .WithHttpTransport(o => o.Stateless = true) // false if you need sampling/elicitation/subscriptions
+    .WithHttpTransport(o => o.SessionMode = HttpServerSessionMode.Stateless) // Stateful only for subscriptions/listen
     .WithToolsFromAssembly(typeof(SearchTool).Assembly)
     .WithResources<ChunkResource>();
 

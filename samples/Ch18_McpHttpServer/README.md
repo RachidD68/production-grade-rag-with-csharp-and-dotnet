@@ -13,9 +13,13 @@ transport at a single `/mcp` endpoint, behind **JWT bearer** authentication.
 - **Tenant scope** — derived per request from the `ClaimsPrincipal`
   (`ClaimsTenantContext` reads `clearance` / `silo` / `office` claims), not a
   fixed dev default. Unauthenticated requests collapse to Public clearance.
-- **Transport** — `WithHttpTransport(o => o.Stateless = true)`. Stateless is the
-  recommended default; set it `false` only when you need sampling, elicitation,
-  or subscriptions (those need a stateful session).
+- **Transport** — `WithHttpTransport(o => o.SessionMode = HttpServerSessionMode.Stateless)`.
+  Stateless is the spec default since MCP 2026-07-28 (no `initialize` handshake,
+  no `Mcp-Session-Id`; clients start with `server/discover`). Switch to
+  `Stateful` only for `subscriptions/listen` (resource / list-changed
+  notifications) — sampling and elicitation no longer need a session: elicitation
+  is now a multi-round-trip request (`input_required`) on the ordinary request
+  stream, and sampling is deprecated.
 
 ## Run it
 

@@ -8,13 +8,15 @@ namespace RagInDotNet.Samples.Ch18_McpServer;
 /// Illustrative MCP <em>client</em> using the Microsoft Agent Framework (MAF)
 /// AIAgent idiom — the path a host application takes to consume this server's
 /// tools. It is compiled (so the API surface is verified against the pinned
-/// ModelContextProtocol 1.4.0 + Microsoft.Agents.AI 1.16.0) but never invoked by
+/// ModelContextProtocol 2.2.0 + Microsoft.Agents.AI 1.20.0) but never invoked by
 /// <c>Program</c>: <see cref="RunAsync"/> needs a real <see cref="IChatClient"/>
 /// (OpenAI / Azure / Anthropic), so it cannot run offline.
 /// <para>
-/// Verified API surface (1.4.0 / 1.16.0):
+/// Verified API surface (2.2.0 / 1.20.0):
 /// <list type="bullet">
-///   <item><c>McpClient.CreateAsync(IClientTransport, ...)</c> — note: <c>McpClientFactory</c> no longer exists.</item>
+///   <item><c>McpClient.CreateAsync(IClientTransport, ...)</c> — note: <c>McpClientFactory</c> no longer exists. Since
+///   MCP 2026-07-28 it negotiates with <c>server/discover</c> (no session; <c>McpClient.ServerInfo</c> is populated
+///   from the reply) and falls back to the old <c>initialize</c> handshake for pre-2026 servers.</item>
 ///   <item><c>StdioClientTransport(StdioClientTransportOptions, ILoggerFactory?)</c>.</item>
 ///   <item><c>client.ListToolsAsync()</c> returns <c>IList&lt;McpClientTool&gt;</c>; <c>McpClientTool : AIFunction : AITool</c>.</item>
 ///   <item><c>chatClient.AsAIAgent(instructions, name, description, tools, ...)</c> returns a <c>ChatClientAgent : AIAgent</c>.</item>
@@ -23,7 +25,8 @@ namespace RagInDotNet.Samples.Ch18_McpServer;
 /// </para>
 /// <para>
 /// FOOTGUN: against a Streamable-HTTP server, configure the client transport
-/// with <c>HttpTransportMode.StreamableHttp</c> (or <c>AutoDetect</c>). A client
+/// with <c>HttpTransportMode.StreamableHttp</c> (or <c>AutoDetect</c>). <c>Sse</c>
+/// survives only to reach legacy two-endpoint servers. A client
 /// pinned to <c>HttpTransportMode.Sse</c> talking to a Streamable-HTTP server
 /// gets an EMPTY tool list from <c>ListToolsAsync()</c>, and the agent then
 /// hallucinates tool calls instead of failing loudly. Match client mode to the

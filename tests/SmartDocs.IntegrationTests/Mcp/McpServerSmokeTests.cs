@@ -17,8 +17,9 @@ namespace SmartDocs.IntegrationTests.Mcp;
 /// <see cref="WebApplicationFactory{TEntryPoint}"/>, replaces JWT bearer with an
 /// always-authenticated TEST scheme (no real token), connects a real
 /// <see cref="McpClient"/> over the in-memory <see cref="HttpClient"/>, and runs
-/// the MCP <c>initialize</c> + <c>tools/list</c> handshake — asserting the full
-/// tool set the chapter promises is advertised.
+/// MCP <c>server/discover</c> + <c>tools/list</c> (spec 2026-07-28: no session,
+/// no initialize handshake) — asserting the server identity came back from
+/// discovery and that the full tool set the chapter promises is advertised.
 /// <para>
 /// The factory entry point is the HTTP sample's <c>Program</c> (exposed via
 /// <c>public partial class Program;</c>). Because both the sample and
@@ -36,7 +37,7 @@ public sealed class McpServerSmokeTests : IClassFixture<McpServerSmokeTests.Test
     }
 
     [Fact]
-    public async Task Initialize_and_tools_list_advertise_the_full_tool_set()
+    public async Task Discover_and_tools_list_advertise_the_full_tool_set()
     {
         var httpClient = _factory.CreateClient();
         httpClient.BaseAddress = new Uri(httpClient.BaseAddress!, "/");
@@ -51,6 +52,10 @@ public sealed class McpServerSmokeTests : IClassFixture<McpServerSmokeTests.Test
                 httpClient,
                 loggerFactory: null,
                 ownsHttpClient: false));
+
+        // A discovery-only bootstrap still identifies the server: the SDK fills
+        // ServerInfo from the server/discover reply, not from an initialize session.
+        Assert.NotNull(mcp.ServerInfo);
 
         var tools = await mcp.ListToolsAsync();
         var names = tools.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
