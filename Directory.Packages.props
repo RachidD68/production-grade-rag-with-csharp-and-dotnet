@@ -14,28 +14,29 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.16.0 stable (July 2026)">
+  <ItemGroup Label="Microsoft Agent Framework (MAF) — 1.20.0 stable (August 2026)">
     <!--
       Stable release line. Pin to the exact patch version below; the project
       bumps deliberately, not by floating on a range. Verify against the
       release notes when upgrading.
-      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.16.0
-      Bump rationale: docs/decisions/0015-maf-1.16.md (supersedes 0014)
+      Release notes: https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.20.0
+      Bump rationale: docs/decisions/0016-maf-1.20.md (supersedes 0015)
     -->
-    <PackageVersion Include="Microsoft.Agents.AI" Version="1.16.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.16.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.16.0" />
-    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.16.0" />
+    <PackageVersion Include="Microsoft.Agents.AI" Version="1.20.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.20.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.OpenAI" Version="1.20.0" />
+    <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.20.0" />
     <!-- Azure AI Foundry integration. This sub-package never left preview
-         (GA stops at 1.5.0); track the matching 1.16.0 preview so the Ch 6/14
+         (GA stops at 1.5.0); track the matching 1.20.0 preview so the Ch 6/14
          Foundry samples resolve a real version if enabled. No project
          references it today — the pin is here to keep the version coherent. -->
-    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.16.0-preview.260730.1" />
-    <!-- A2A remains preview at the 1.16.0 milestone — see ADR-0015. -->
-    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.16.0-preview.260730.1" />
-    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.16.0-preview.260730.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Foundry" Version="1.20.0-preview.260831.1" />
+    <!-- A2A remains preview at the 1.20.0 milestone — see ADR-0016. Like Foundry,
+         these two are coherence pins: no project in this solution references them. -->
+    <PackageVersion Include="Microsoft.Agents.AI.A2A" Version="1.20.0-preview.260831.1" />
+    <PackageVersion Include="Microsoft.Agents.AI.Hosting.A2A.AspNetCore" Version="1.20.0-preview.260831.1" />
     <!-- Mem0 long-term memory provider (Ch 19). Ships on its OWN preview line
-         (1.0.0-preview), NOT the 1.13.0 MAF core line — do not "bump" it to 1.13.0.
+         (1.0.0-preview), NOT the MAF core line — never "bump" it to the MAF version.
          Used for the optional managed-memory registration path beside the
          hand-rolled SmartDocsMemoryProvider (AIContextProvider over the Ch6 stack). -->
     <PackageVersion Include="Microsoft.Agents.AI.Mem0" Version="1.0.0-preview.251028.1" />
@@ -48,26 +49,30 @@
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.AI — unified IChatClient / IEmbeddingGenerator">
-    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
+    <!-- 10.9.0 is the floor MAF 1.19.0+ declares (it was 10.7.0 through 1.18.0). -->
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="10.9.0" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.AI.Evaluation — first-party .NET eval (Ch 20)">
-    <!-- Evaluation / Quality / Reporting ship stable on the 10.7.0 line; Safety
+    <!-- Evaluation / Quality / Reporting ship stable on the 10.9.0 line; Safety
          and NLP are preview-only on that line (user-approved). Some evaluators
-         (RTC, etc.) are gated behind the AIEVAL001 experimental diagnostic — the
-         eval sample projects add <NoWarn>$(NoWarn);AIEVAL001</NoWarn>. -->
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Safety" Version="10.7.0-preview.1.26309.5" />
-    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.7.0-preview.1.26309.5" />
+         (RTC, the 10.9 agent-quality trio, etc.) are gated behind the AIEVAL001
+         experimental diagnostic — the eval sample projects add
+         <NoWarn>$(NoWarn);AIEVAL001</NoWarn>. -->
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Quality" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Reporting" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.Safety" Version="10.9.0-preview.1.26411.16" />
+    <PackageVersion Include="Microsoft.Extensions.AI.Evaluation.NLP" Version="10.9.0-preview.1.26411.16" />
   </ItemGroup>
 
   <ItemGroup Label="LLM provider SDKs">
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
-    <PackageVersion Include="OpenAI" Version="2.11.0" />
+    <!-- Microsoft.Extensions.AI.OpenAI 10.9.0 caps the OpenAI SDK at 2.12.x
+         (2.13.0 exists on NuGet but is outside the cap until MEAI 10.9.1). -->
+    <PackageVersion Include="OpenAI" Version="2.12.0" />
     <!-- NOTE (Ch 23): Azure AI Content Safety "Prompt Shields" is GA but, in
          .NET, REST-only — there is NO ShieldPrompt method in any shipped
          Azure.AI.ContentSafety NuGet (only 1.0.0-beta.1 / 1.0.0 exist, both
@@ -87,30 +92,33 @@
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.VectorData — abstractions GA, connectors preview">
-    <PackageVersion Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.7.0" />
-    <!-- Connectors are pinned in the projects that consume them (Phase 2, Ch 6). -->
+    <!-- 10.8.2 is the floor MAF 1.20.0 declares (10.7.0 through 1.19.0). Held at
+         the floor rather than 10.9.0 so both books in the series pin the same value. -->
+    <PackageVersion Include="Microsoft.Extensions.VectorData.Abstractions" Version="10.8.2" />
+    <!-- Connectors ship as CommunityToolkit.VectorData.* and are pinned in the
+         projects that consume them (Phase 2, Ch 6). -->
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions.* — hosting, configuration, DI, resilience">
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="DI composition (Scrutor — Ch 9 reranking decorator)">
@@ -136,7 +144,7 @@
     <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
     <!-- Pin the patched Microsoft.Bcl.Memory transitive: M.ML.Tokenizers 2.0.0
          pulls 9.0.4 which has GHSA-73j8-2gch-69rq (high severity). -->
-    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
     <PackageVersion Include="OllamaSharp" Version="5.4.25" />
     <!-- ONNX Runtime for the self-hosted cross-encoder reranker (Ch 9). Pulls
          native binaries, so it is referenced ONLY by the opt-in
@@ -186,17 +194,17 @@
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core 10 — first-class OpenAPI 3.1 (no Swashbuckle needed)">
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
-    <!-- Transitive of AspNetCore.OpenApi 10.0.9; pinned to 2.7.5 to clear
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <!-- Transitive of AspNetCore.OpenApi 10.0.11; pinned to 2.7.5 to clear
          GHSA-v5pm-xwqc-g5wc (NU1903 high-severity, affects 2.0.0-preview.11..2.7.4,
          fixed in 2.7.5). Auto-applied via CentralPackageTransitivePinningEnabled. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
     <!-- JWT bearer auth for the Ch 18 Streamable-HTTP MCP host (OAuth 2.0
          resource-server model): MapMcp().RequireAuthorization() over a JWT.
          Microsoft.IdentityModel.* / System.IdentityModel.Tokens.Jwt come in
          transitively and are auto-pinned by CPM transitive pinning. -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
