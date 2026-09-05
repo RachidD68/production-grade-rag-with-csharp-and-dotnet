@@ -49,11 +49,12 @@ dotnet publish samples/Ch21_AotMcpServer/Ch21_AotMcpServer.csproj \
 On the authoring machine (June 2026, .NET SDK 10.0.301):
 
 - `dotnet build` — **clean, 0 warnings**.
-- `dotnet publish -r win-x64 -p:PublishAot=true` — the ILC managed
-  ahead-of-time compilation and **trim/AOT analysis run and emit zero
-  `ILxxxx` warnings**: neither the MCP SDK (`ModelContextProtocol` 1.4.0) nor
-  `Microsoft.Extensions.AI` contributed a trim warning for this minimal surface.
-  Publish then stops at the **native link** step with:
+- `dotnet publish -r win-x64 -p:PublishTrimmed=true` — ILLink runs over the
+  full closure and **emits zero `ILxxxx` warnings** (re-checked September 2026
+  on `ModelContextProtocol` 2.2.0 + `Microsoft.Extensions.AI` 10.9.0): neither
+  the MCP SDK nor MEAI contributed a trim warning for this minimal surface.
+- `dotnet publish -r win-x64 -p:PublishAot=true` — without the C++ workload the
+  publish stops at the **linker prerequisite check**, before ILC starts, with:
 
   > error: Platform linker not found. Ensure you have ... the Desktop
   > Development for C++ workload in Visual Studio.

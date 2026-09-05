@@ -16,41 +16,41 @@
 
 ## What's in this book
 
-**Retrieval-Augmented Generation** is how you make a language model answer from *your* documents instead of improvising from its training data. This book builds one production system — **Contoso SmartDocs** — across twenty-five chapters, entirely in **C# 14 / .NET 10**, on the **Microsoft Agent Framework 1.13.0** and **Microsoft.Extensions.AI**.
+**Retrieval-Augmented Generation** is how you make a language model answer from *your* documents instead of improvising from its training data. This book builds one production system — **Contoso SmartDocs** — across twenty-five chapters, entirely in **C# 14 / .NET 10**, on the **Microsoft Agent Framework 1.20.0** and **Microsoft.Extensions.AI**.
 
-Across seven parts you go from a ten-minute Hello-World RAG through the whole pipeline — embeddings, chunking with Anthropic's Contextual Retrieval, multimodal content, vector databases, indexing, retrieval, re-ranking, and first-class SSE streaming — into query intelligence, graph and hybrid storage, and the modern design patterns: HyDE, RAPTOR, RAG-Fusion, Self-RAG, CRAG, Vectorless, GraphRAG, LazyGraphRAG, MCP-served retrieval, and multi-agent orchestration. The last third is the part most RAG books skip: evaluation, latency and cost, freshness and drift, security, trust and compliance, and a capstone that ships to Azure with Bicep, runbooks, and an eval gate in CI.
+Across seven parts you go from a ten-minute Hello-World RAG through the whole pipeline — embeddings, chunking with Anthropic's Contextual Retrieval, multimodal content, vector databases, indexing, retrieval, reranking, and first-class SSE streaming — into query intelligence, graph and hybrid storage, and the modern design patterns: HyDE, RAPTOR, RAG-Fusion, Self-RAG, CRAG, Vectorless, GraphRAG, LazyGraphRAG, MCP-served retrieval, and multi-agent orchestration. The last third is the part most RAG books skip: evaluation, latency and cost, freshness and drift, security, trust and compliance, and a capstone that ships to Azure with Bicep, runbooks, and an eval gate in CI.
 
-Every code listing is anchored in a runnable project in this repository, every package is pinned centrally, and the whole solution builds warnings-as-errors with **443 passing tests**.
+Every code listing is anchored in a runnable project in this repository, every package is pinned centrally, and the whole solution builds warnings-as-errors with **458 passing tests**.
 
 ## Table of Contents
 
 | # | Chapter | Part |
 |---|---------|------|
-| 1 | The AI Landscape: When to Use RAG, When Not, and What Replaced What in 2026 | **I — Foundations** |
+| 1 | The AI Landscape | **I — Foundations** |
 | 2 | The .NET Toolkit for RAG Development | I |
 | 3 | Embeddings: Turning Text into Vectors | **II — The RAG Pipeline** |
-| 4 | Chunking and Contextual Retrieval — The #1 Tuning Knob | II |
-| 5 | Multimodal Content: Text, Tables, Images, and Charts | II |
-| 6 | Vector Databases: Storing and Searching Embeddings | II |
-| 7 | Indexing Strategies: From Chunks to Intelligent Organization | II |
-| 8 | The Retriever: Dense, Sparse, and Hybrid Search | II |
-| 9 | Re-ranking: The Production Baseline | II |
-| 10 | The Complete RAG Pipeline: Query to Response | II |
+| 4 | Chunking and Contextual Retrieval | II |
+| 5 | Multimodal RAG | II |
+| 6 | Vector Databases | II |
+| 7 | Indexing Strategies | II |
+| 8 | The Retriever | II |
+| 9 | Reranking | II |
+| 10 | The Complete RAG Pipeline | II |
 | 11 | Metadata Filtering and Query Construction | **III — Query Intelligence** |
-| 12 | Query Routing and Conversational Multi-Turn RAG | III |
+| 12 | Query Routing and Conversational Queries | III |
 | 13 | Graph Databases for RAG | **IV — Graph and Hybrid Storage** |
-| 14 | Hybrid Databases: The Production Answer | IV |
-| 15 | Classic Enhancements: HyDE, RAPTOR, RAG-Fusion, Self-RAG, CRAG | **V — RAG Design Patterns** |
-| 16 | Vectorless RAG: Navigating by Structure | V |
-| 17 | GraphRAG, LazyGraphRAG, and Hybrid RAG in Production | V |
-| 18 | Model Context Protocol: Retrieval as a Tool Service | V |
-| 19 | Agentic RAG, Multi-Agent RAG, and Agentic Memory | V |
-| 20 | Evaluation and Metrics: Measuring RAG Quality | **VI — Production Concerns** |
-| 21 | Latency, Cost, Performance, and .NET Optimization | VI |
-| 22 | Freshness, Drift, and Model Migration | VI |
-| 23 | Security: Prompt Injection and Adversarial Indexing | VI |
-| 24 | Trust by Design: Grounding, Citations, and Compliance | VI |
-| 25 | Building a Production RAG Application: From Code to Cloud | **VII — Capstone Project** |
+| 14 | Hybrid Databases | IV |
+| 15 | Classic RAG Enhancements | **V — RAG Design Patterns** |
+| 16 | Vectorless RAG | V |
+| 17 | GraphRAG and LazyGraphRAG | V |
+| 18 | Model Context Protocol | V |
+| 19 | Agentic, Multi-Agent, and Memory | V |
+| 20 | Evaluation and Metrics | **VI — Production Concerns** |
+| 21 | Latency, Cost, and Performance | VI |
+| 22 | Freshness, Drift, and Migration | VI |
+| 23 | Security | VI |
+| 24 | Trust by Design | VI |
+| 25 | Production Capstone | **VII — Capstone Project** |
 
 Nine appendices follow: worked exercise solutions, a design-pattern quick reference, a vector-database comparison, an embedding benchmark, a Python-to-.NET Rosetta stone, this repository's tour, a production debugging checklist, prompt-engineering patterns, and the math behind RAG.
 
@@ -61,8 +61,8 @@ Nine appendices follow: worked exercise solutions, a design-pattern quick refere
 ### Target stack
 
 - **.NET 10** (LTS) / **C# 14**
-- **Microsoft Agent Framework 1.13.0**
-- **Microsoft.Extensions.AI 10.7.0**
+- **Microsoft Agent Framework 1.20.0**
+- **Microsoft.Extensions.AI 10.9.0**
 - Visual Studio 2026, or VS Code with the C# Dev Kit
 
 Every package version is pinned centrally in `Directory.Packages.props` (Central Package Management); individual `.csproj` files reference packages without version numbers.
@@ -92,7 +92,7 @@ dotnet build RAG-in-DotNet.slnx
 dotnet test
 ```
 
-Open `RAG-in-DotNet.slnx` once and every project loads together. `dotnet test` should report **443 passing tests** on a clean clone.
+Open `RAG-in-DotNet.slnx` once and every project loads together. `dotnet test` should report **458 passing tests** on a clean clone.
 
 ### Run a sample
 
@@ -130,7 +130,7 @@ Embedding dimensions differ between providers (`nomic-embed-text` is 768, `text-
 | `src/SmartDocs.Ingestion/` | 3–5, 7 | Parsing, chunking, Contextual Retrieval, embeddings, indexing |
 | `src/SmartDocs.Retrieval/` | 6, 8, 13–17 | Dense, sparse, hybrid, graph, and vectorless retrievers; vector stores |
 | `src/SmartDocs.Retrieval.{Qdrant,Postgres,AzureSearch}/` | 14 | Backend leaf packages over the hybrid retrievers |
-| `src/SmartDocs.Reranking/` (+ `.Cohere`, `.Onnx`) | 9 | Cohere, ONNX cross-encoder, and LLM re-rankers |
+| `src/SmartDocs.Reranking/` (+ `.Cohere`, `.Onnx`) | 9 | Cohere, ONNX cross-encoder, and LLM rerankers |
 | `src/SmartDocs.Routing/` | 11–12 | Query construction, self-query, routing, conversational rewriting |
 | `src/SmartDocs.Generation/` | 10 | Prompt templates, context assembly, citation tracking |
 | `src/SmartDocs.Agents/` | 19 | `ChatClientAgent`, tools, the Workflow graph, agentic memory |
@@ -142,7 +142,7 @@ Embedding dimensions differ between providers (`nomic-embed-text` is 768, `text-
 | `src/SmartDocs.Api/` | 10, 25 | ASP.NET Core Minimal API with first-class SSE streaming |
 | `src/SmartDocs.Dashboard/` | 20 | Blazor evaluation dashboard |
 | `samples/` | 1–22 | One runnable micro-project per chapter that has one |
-| `tests/` | — | 443 xUnit tests: unit, security (25-case red team), integration, eval |
+| `tests/` | — | 458 xUnit tests: unit, security (25-case red team), integration, eval |
 | `tools/` | 20, 22, 25 | Dataset generator, eval-runner (`--gate`), smoke/load test, reindex |
 | `deploy/` | 25 | Bicep templates, prod deployment and NuGet publish workflows |
 | `docs/` | — | Local setup, architecture, ADRs, runbooks, preflight checklist |

@@ -1,4 +1,4 @@
-// Ch 14 — Azure AI Search RAG agent (MAF 1.16.0 reference pattern)
+// Ch 14 — Azure AI Search RAG agent (MAF 1.20.0 reference pattern)
 //
 // This sample mirrors the Microsoft Agent Framework RAG reference: an
 // Azure-hosted hybrid store fronted by a ChatClientAgent. We use a stand-in

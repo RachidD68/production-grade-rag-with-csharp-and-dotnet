@@ -16,11 +16,13 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RuntimeIdentifier Condition="'$(PublishAot)' == 'true' and '$(_IsPublishing)' == 'true'">win-x64</RuntimeIdentifier>
 
-    <!-- The MCP SDK and Microsoft.Extensions.AI are not yet fully trim/AOT
-         annotated, so a real `dotnet publish /p:PublishAot=true` emits IL2104 /
-         IL3053 warnings from those assemblies. Treating them as errors here
-         would make an honest AOT experiment break the build, so we down-grade
-         AOT-analysis warnings to messages in THIS sample only. The build bar for
+    <!-- Trim analysis (PublishTrimmed) is clean on ModelContextProtocol 2.2.0 +
+         Microsoft.Extensions.AI 10.9.0 (zero ILxxxx warnings, September 2026),
+         but neither package promises full trim/AOT annotation, so a future
+         `dotnet publish /p:PublishAot=true` may surface IL2104 / IL3053 from
+         those assemblies. Treating them as errors here would make an honest
+         AOT experiment break the build, so we down-grade AOT-analysis warnings
+         to messages in THIS sample only. The build bar for
          the solution stays "0 warnings"; the AOT story is documented, not shipped
          as a clean native binary. See README.md. -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
