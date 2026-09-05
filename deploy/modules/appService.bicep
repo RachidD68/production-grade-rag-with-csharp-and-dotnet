@@ -100,7 +100,7 @@ var appSettings = [
   }
   {
     name: 'SmartDocs__Llm__ChatModel'
-    value: 'gpt-4o'
+    value: 'gpt-5.6-terra'
   }
   {
     name: 'SmartDocs__Llm__EmbeddingModel'

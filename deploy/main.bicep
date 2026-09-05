@@ -138,13 +138,13 @@ module cosmos 'modules/cosmos.bicep' = {
   }
 }
 
-// 5. Azure OpenAI — gpt-4o + text-embedding-3-small.
+// 5. Azure OpenAI — gpt-5.6-terra + text-embedding-3-small.
 module openai 'modules/openai.bicep' = {
   name: 'openai'
   params: {
     environment: environment
     // Data-plane: prompts + completions are processed in-boundary. NB the chosen
-    // dataPlaneLocation must carry the gpt-4o / embedding models you deploy.
+    // dataPlaneLocation must carry the gpt-5.6-terra / embedding models you deploy.
     location: dataLocation
     skuName: openAiSku
   }

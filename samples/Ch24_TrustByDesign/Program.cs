@@ -236,6 +236,12 @@ sealed class StubModelRegistry : IModelRegistry
 {
     public Task<IReadOnlyList<ModelEntry>> GetModelsAsync(CancellationToken cancellationToken = default)
     {
+        // Offline stub: a fixed, DATED record — which is the whole point of a model
+        // card (Chapter 24: pin the dated version, never the alias). The id is a
+        // now-retired one on purpose; a real IModelRegistry reads name + version
+        // from the live deployment (deploy/modules/openai.bicep now targets
+        // gpt-5.6-terra on the platform-default version), and a card must keep
+        // recording what WAS deployed after the model is retired.
         IReadOnlyList<ModelEntry> models =
         [
             new("chat", "gpt-4o", "2024-11-20"),

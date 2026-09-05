@@ -1,4 +1,4 @@
-// Microsoft.CognitiveServices/accounts (kind 'OpenAI') — the LLM + embeddings: gpt-4o and text-embedding-3-small deployments.
+// Microsoft.CognitiveServices/accounts (kind 'OpenAI') — the LLM + embeddings: gpt-5.6-terra and text-embedding-3-small deployments.
 
 @description('Logical environment name (dev, staging, prod). Used as a name suffix.')
 param environment string
@@ -43,9 +43,16 @@ resource openai 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
 }
 
 // Chat model. Deployments must be serialized — the second depends on the first.
-resource gpt4o 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+// gpt-4o / gpt-4o-mini are Deprecated on Azure OpenAI (no NEW deployments), so
+// the chat deployment targets the gpt-5.6 family. `model.version` is omitted on
+// purpose: the ARM contract documents it as optional ("if version is not
+// specified, a default version will be assigned") and the default is only
+// discoverable through the list-models API at deploy time — pinning a dated
+// value here would bake in a string this repo cannot verify offline.
+// OnceNewDefaultVersionAvailable keeps the deployment on the platform default.
+resource chat 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: openai
-  name: 'gpt-4o'
+  name: 'gpt-5.6-terra'
   sku: {
     name: skuName == 'S0' ? 'Standard' : 'ProvisionedManaged'
     capacity: chatCapacity
@@ -53,10 +60,9 @@ resource gpt4o 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4o'
-      version: '2024-08-06'
+      name: 'gpt-5.6-terra'
     }
-    versionUpgradeOption: 'OnceCurrentVersionExpired'
+    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
   }
 }
 
@@ -76,11 +82,11 @@ resource embeddings 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01
     versionUpgradeOption: 'OnceCurrentVersionExpired'
   }
   // Azure OpenAI rejects concurrent deployment creates on one account.
-  dependsOn: [ gpt4o ]
+  dependsOn: [ chat ]
 }
 
 output id string = openai.id
 output name string = openai.name
 output endpoint string = openai.properties.endpoint
-output chatDeployment string = gpt4o.name
+output chatDeployment string = chat.name
 output embeddingDeployment string = embeddings.name
