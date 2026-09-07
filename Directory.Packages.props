@@ -145,7 +145,7 @@
     <!-- Pin the patched Microsoft.Bcl.Memory transitive: M.ML.Tokenizers 2.0.0
          pulls 9.0.4 which has GHSA-73j8-2gch-69rq (high severity). -->
     <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
-    <PackageVersion Include="OllamaSharp" Version="5.4.25" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.30" />
     <!-- ONNX Runtime for the self-hosted cross-encoder reranker (Ch 9). Pulls
          native binaries, so it is referenced ONLY by the opt-in
          SmartDocs.Reranking.Onnx adapter — never by the lean core reranking
