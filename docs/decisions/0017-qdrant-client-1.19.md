@@ -47,13 +47,17 @@ must not hide a code change); doing the port as its own change is this ADR.
 - `dotnet build` is 0 warnings / 0 errors with warnings-as-errors; the suite is
   unchanged at **458 tests** (372 unit + 71 security + 15 integration; 1
   skipped, the ONNX real-model test).
-- **The live Qdrant round-trip** (`QdrantVectorStoreTests`, gated by
-  `RUN_QDRANT_INTEGRATION=1` + a local server on 6334) exercises the new
-  `QueryAsync` path and the pinned-tier collection creation; it is the test to
-  run against a 1.19 server before relying on this in production. It was not
-  executed on the authoring machine for this ADR (no local Qdrant binary
-  installed); the port compiles against the 1.19 API and the unit test covers
-  the collection-creation shape.
+- **Verified against a live Qdrant 1.19.1 server** (the Windows release,
+  2026-09-04) on the authoring machine, 2026-09-08:
+  - `QdrantVectorStoreTests.Roundtrip_upsert_search_delete_against_real_qdrant`
+    (`RUN_QDRANT_INTEGRATION=1`) passes on the `QueryAsync` path.
+  - A collection created through `QdrantVectorStore(..., useScalarQuantization: true)`
+    is accepted by the server and reads back — over gRPC
+    (`GetCollectionInfoAsync`) and REST (`GET /collections/{name}`) — as
+    `quantization_config: { scalar: { type: int8, memory: pinned } }`; a
+    `QueryAsync` search over that quantized collection returns the expected hit.
+  - `samples/Ch06_VectorDbComparison` runs its Qdrant leg (recall 100% on the
+    sample corpus).
 - Behaviour on older servers: `Memory` is a 1.19 server concept. A 1.18 server
   ignores or rejects the tier field depending on its strict-mode settings;
   run the client and server on the same minor, as Chapter 6 already advises.
