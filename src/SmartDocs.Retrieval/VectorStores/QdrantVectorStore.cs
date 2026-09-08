@@ -33,7 +33,7 @@ public sealed class QdrantVectorStore : IVectorStore
     /// <param name="useScalarQuantization">
     /// When <see langword="true"/>, the collection is created with int8 scalar
     /// quantization (<c>quantization_config</c>) — roughly 4x smaller vectors at
-    /// ~99% recall, kept in RAM for fast rescoring. Off by default so the
+    /// ~99% recall, pinned in RAM for fast rescoring. Off by default so the
     /// baseline collection layout is byte-for-byte unchanged; opt in per the
     /// recall/memory trade-off discussed in Chapter 6.
     /// </param>
@@ -87,8 +87,11 @@ public sealed class QdrantVectorStore : IVectorStore
     /// Builds the <see cref="VectorParams"/> for collection creation. Extracted
     /// so the quantization wiring is unit-testable without a live Qdrant.
     /// When <paramref name="useScalarQuantization"/> is on, an int8
-    /// <c>ScalarQuantization</c> config is attached; otherwise the params are
-    /// the bare <c>Size</c>/<c>Distance</c> baseline.
+    /// <c>ScalarQuantization</c> config is attached with its storage tier set to
+    /// <see cref="Memory.Pinned"/> (Qdrant 1.19's replacement for the retired
+    /// <c>always_ram</c> flag: <c>Cold</c> = disk, <c>Cached</c> = disk with a
+    /// RAM cache, <c>Pinned</c> = always in RAM); otherwise the params are the
+    /// bare <c>Size</c>/<c>Distance</c> baseline.
     /// </summary>
     internal static VectorParams BuildVectorParams(int vectorSize, Distance distance, bool useScalarQuantization)
     {
@@ -100,9 +103,10 @@ public sealed class QdrantVectorStore : IVectorStore
                 Scalar = new ScalarQuantization
                 {
                     Type = QuantizationType.Int8,
-                    // Keep quantized vectors in RAM so rescoring stays fast — the
+                    // Pin quantized vectors in RAM so rescoring stays fast — the
                     // memory-fit win that makes quantization worthwhile (Ch 6 §RAM).
-                    AlwaysRam = true,
+                    // Qdrant.Client 1.19 retired the AlwaysRam bool for this tier enum.
+                    Memory = Memory.Pinned,
                 },
             };
         }
@@ -136,9 +140,12 @@ public sealed class QdrantVectorStore : IVectorStore
         // tests, since it needs a running container.
         var grpcFilter = filter is null ? null : QdrantFilterCompiler.ToGrpcFilter(filter);
 
-        var hits = await _client.SearchAsync(
+        // Universal Query API (Qdrant 1.10+; the only non-obsolete search surface in
+        // Qdrant.Client 1.19). A float[] converts implicitly to a nearest-vector Query;
+        // the hybrid retriever uses the same call with prefetch legs + RRF fusion.
+        var hits = await _client.QueryAsync(
             CollectionName,
-            queryVector.ToArray(),
+            query: queryVector.ToArray(),
             filter: grpcFilter,
             limit: (ulong)topK,
             payloadSelector: true,

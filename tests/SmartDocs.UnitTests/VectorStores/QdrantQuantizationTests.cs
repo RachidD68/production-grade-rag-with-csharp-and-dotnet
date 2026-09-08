@@ -32,6 +32,8 @@ public sealed class QdrantQuantizationTests
             QuantizationConfig.QuantizationOneofCase.Scalar,
             vectorParams.QuantizationConfig.QuantizationCase);
         Assert.Equal(QuantizationType.Int8, vectorParams.QuantizationConfig.Scalar.Type);
-        Assert.True(vectorParams.QuantizationConfig.Scalar.AlwaysRam);
+        // Qdrant.Client 1.19: the storage tier replaces the retired AlwaysRam flag.
+        Assert.True(vectorParams.QuantizationConfig.Scalar.HasMemory);
+        Assert.Equal(Memory.Pinned, vectorParams.QuantizationConfig.Scalar.Memory);
     }
 }
