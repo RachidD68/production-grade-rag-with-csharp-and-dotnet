@@ -150,7 +150,7 @@
          native binaries, so it is referenced ONLY by the opt-in
          SmartDocs.Reranking.Onnx adapter — never by the lean core reranking
          library — keeping the native dependency off every other consumer. -->
-    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" />
   </ItemGroup>
 
   <ItemGroup Label="Vector and graph databases">
